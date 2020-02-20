@@ -1,17 +1,23 @@
 /**
  *
- * @descripion: como funciona o parser para encontrar a tag <?cweb CONTENT ?>
- * '<?cweb #include "name" ?>' -> inclui o objeto chamado name, que foi colocado na função ClientOuput_Se * t, onde name é o parâmetro 'name'.
- * A tag será então substituída pelo conteúdo do objeto name, pode ser um arquivo ou uma string.
- * Após a inserão, continuará a impressão do objeto de onde parou.
- * '<?cweb@' -> imprime normalemnte o valor '<?cweb' -> ou seja, o caracter '@' será omitido, porém isto  * somente ocorre com o primeiro caracter posterior. - deve-se utilizar tal valor nos comentários, pois o * parser não distingue se a linha está em um comentário ou não.
- * @ TODO - criar uma nova versão que verifica se a linha está dentro de um comentário ou não 
+ * @descripion: implementa 3 macros para tornar mais legível a escolha do caminho a se fazer.
+ * Deve-se de preferência criar uma função exclusiva para gerenciar as routes da aplicação.
+ * As macros devem ser utilizadas em ordem e em sequência, para não ocasionar errors, segue a ordem:
+ * CWeb_Route_Init
+ * CWeb_Route (quantas vezes for necessário para especificar todos os caminhos)
+ * CWeb_Route_Error
  *
- * NAME parameter in function ClientOuput_Set, have limits min and max - see below.
- * all character of name must be a letter (A to Z or a to z) or a digit (0 to 9) or special character ('_' and '-')
+ *@IMPORTANT: após o nome do uso da maro, não pode usar o character ';' - erro de compilação, o certo é:
+ *@exemple: exemplo de uma função que usa esta biblioteca:
+ * void route()
+ *{
+ *	CWeb_Route_Init("/", page_index())
+ *	CWeb_Route("/init", page_init())
+ *	CWeb_Route_Error(page_error())
+ *}
  */
-#ifndef CLIENTOUTPUT_STRMAP_H
-#define CLIENTOUTPUT_STRMAP_H
+#ifndef CWEB_ROUTE_EASY_H
+#define CWEB_ROUTE_EASY_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,18 +33,32 @@ extern "C" {
 #include <stdbool.h>
 #include <ctype.h>
 
-#include <headers/abstractFactoryCommon.h>
-#include <headers/fileUtil.h>
-
-#include <headers/clientOutput.h>
-
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
 ////////////////////////////////////////////////////////////////////////////////
-#define CLIENTOUTPUT_STRMAP_NAME_MIN 5 // tamanho mínimo para o name - não incluindo o character '\0'
-#define CLIENTOUTPUT_STRMAP_NAME_MAX 256 // tamanho máximo é 255 | 256 inclui o caracter '\0'
 
+/**
+ * os parâmetros são os mesmos.
+ * @PARAM PATH = string que contém o caminho requisitado, ou seja, deve ser igual ao
+ * retornado pela variável PATH_INFO que é preenchida pelo HTTP.
+ * @PARAM FUNC = função que deve ser chamada, caso o endereço seja requisitado.
+ * para utilizar mais de um código, apenas usar o parênteses ex: (global_var++; foo();)
+ */
+#define CWeb_Route_Init(PATH, FUNC) \
+	char *cweb_route_path = getenv("PATH_INFO"); \
+	if(strcmp(cweb_route_path, PATH) == 0) {\
+		FUNC;\
+	}
 
+#define CWeb_Route(PATH, FUNC) \
+	else if(strcmp(cweb_route_path, PATH) == 0) {\
+		FUNC;\
+	}
+
+#define CWeb_Route_Error(FUNC) \
+	else {\
+		FUNC;\
+	}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Structs
@@ -58,20 +78,12 @@ extern "C" {
 // Constructs
 ////////////////////////////////////////////////////////////////////////////////
 
-extern clientOutput_t ClientOutput_StrMap_New_Interface();
 
-extern clientOutput_t ClientOutput_StrMap_Singleton_Interface();
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
-extern int ClientOutput_StrMap_Set( void *self_,
-										const char *name, const void *output,
-			                            const char *type, const char *opt);
 
-extern int ClientOutput_StrMap_Print(void *self_);
-
-extern int ClientOutput_StrMap_Print_Error(void *self_);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
@@ -80,7 +92,7 @@ extern int ClientOutput_StrMap_Print_Error(void *self_);
 #ifdef __cplusplus
 }
 #endif
-#endif // CLIENTOUTPUT_STRMAP_H
+#endif // CWEB_ROUTE_EASY_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

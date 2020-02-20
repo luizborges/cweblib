@@ -10,8 +10,8 @@
  * NAME parameter in function ClientOuput_Set, have limits min and max - see below.
  * all character of name must be a letter (A to Z or a to z) or a digit (0 to 9) or special character ('_' and '-')
  */
-#ifndef CLIENTOUTPUT_STRMAP_H
-#define CLIENTOUTPUT_STRMAP_H
+#ifndef CLIENTINPUT_GET_STRMAP_H
+#define CLIENTINPUT_GET_STRMAP_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,13 +30,11 @@ extern "C" {
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
 
-#include <headers/clientOutput.h>
+#include <headers/clientInput_get.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
 ////////////////////////////////////////////////////////////////////////////////
-#define CLIENTOUTPUT_STRMAP_NAME_MIN 5 // tamanho mínimo para o name - não incluindo o character '\0'
-#define CLIENTOUTPUT_STRMAP_NAME_MAX 256 // tamanho máximo é 255 | 256 inclui o caracter '\0'
 
 
 
@@ -57,22 +55,15 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Constructs
 ////////////////////////////////////////////////////////////////////////////////
+extern ClientInput_Get_t ClientInput_Get_StrMap_New_Interface();
 
-extern clientOutput_t ClientOutput_StrMap_New_Interface();
-
-extern clientOutput_t ClientOutput_StrMap_Singleton_Interface();
+extern ClientInput_Get_t ClientInput_Get_StrMap_Singleton_Interface();
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
-extern int ClientOutput_StrMap_Set( void *self_,
-										const char *name, const void *output,
-			                            const char *type, const char *opt);
 
-extern int ClientOutput_StrMap_Print(void *self_);
-
-extern int ClientOutput_StrMap_Print_Error(void *self_);
-
+extern char* ClientInput_Get_StrMap_Get(const char *get_key);
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +71,7 @@ extern int ClientOutput_StrMap_Print_Error(void *self_);
 #ifdef __cplusplus
 }
 #endif
-#endif // CLIENTOUTPUT_STRMAP_H
+#endif // CLIENTINPUT_GET_STRMAP_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

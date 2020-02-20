@@ -54,7 +54,7 @@ typedef ClientOutput_o* ClientOutput_t;
 // Private Functions Head
 ////////////////////////////////////////////////////////////////////////////////
 static ClientOutput_t
-_ClientOutput_Get_Root_COutput_To_Print (bool isError);
+_ClientOutput_Get_Root_COutput_To_Print (const bool isError);
 
 
 static void
@@ -368,6 +368,36 @@ _ClientOutput_StrMap_Print()
 	}
 }
 
+static inline void
+_ClientOutput_Check_Print_All_ClientOutput(const bool isError)
+{
+	map_t map = NULL;
+	if(isError == true) {
+		map = _ClientOutput_Get_LeafMap_Error();
+	}
+	else
+	{
+		map = _ClientOutput_Get_LeafMap();
+	}
+	
+	int numKey;
+	char **cout = map->Key(map->self, &numKey);
+	
+	if(numKey > 0) // check if any printable cout is not printed
+	{	// se tem algum cout não impresso - exibe eles e lança um erro
+		fprintf(stderr, "***********************************\n"
+			"not all Client Output was printed.\nClient output name not printed listed below:\n");
+		
+		for(int i=0; i < numKey; ++i)
+		{
+			fprintf(stderr, "[%d]::Client Output Name::\"%s\"\n", i+1, cout[i]);
+			map->Del(map->self, cout[i]);
+		}
+		
+		Error("\n");
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +479,7 @@ _ClientOutput_Parser_Tag(ClientOutput_t cout,
  * Retorna os nós (roots ou defaults) que ainda faltam imprimir
  */
 static ClientOutput_t
-_ClientOutput_Get_Root_COutput_To_Print (bool isError)
+_ClientOutput_Get_Root_COutput_To_Print (const bool isError)
 {
 	arrayList_t rootList = NULL;
 	if(isError == true) {
@@ -539,6 +569,24 @@ ClientOutput_StrMap_New_Interface()
 	co->Print_Error = ClientOutput_StrMap_Print_Error;
 	
 	return co;
+}
+
+
+clientOutput_t
+ClientOutput_StrMap_Singleton_Interface()
+{
+	static clientOutput_t icout = NULL;
+	
+	if(icout == NULL)
+	{
+		icout = ClientOutput_StrMap_New_Interface();
+		if(icout == NULL)
+		{
+			Error("could not create singleton instance of Client Output.");
+		}
+	}
+	
+	return icout;
 }
 
 
@@ -636,6 +684,8 @@ int ClientOutput_StrMap_Print(void *self_)
 	
 	_ClientOutput_StrMap_Print();
 	
+	_ClientOutput_Check_Print_All_ClientOutput(false);
+	
 	return 0;
 }
 
@@ -647,6 +697,8 @@ int ClientOutput_StrMap_Print_Error(void *self_)
 	}
 	
 	_ClientOutput_StrMap_Print();
+	
+	_ClientOutput_Check_Print_All_ClientOutput(true);
 	
 	return 0;
 }

@@ -21,6 +21,8 @@ C_OBJ_DIR       = objs/
 C_OBJ           = $(addprefix $(C_OBJ_DIR), $(C_OBJ_NAME_ONLY))
 C_LIB_H         = $(C_SRC_LIB:.c=.h)
 LIB             = lib$(C_SRC_LIB:.c=.so)
+GLOBAL_LIB_DIR  = /media/borges/data/cloud/Mega/programming/c/cweblib
+GLOBAL_LIB      = cweb.h
 EXE             = exe
 
 ARG1       = #-q input.dat
@@ -33,8 +35,8 @@ run: linker
 	$(info $nrun: $(EXE))
 	./$(EXE) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5)
 
-lib: linker_lib export_lib export_lib_header
-	$(info Dynamic Library created with success: $(LIB) $nDynamic Library Header exported with success: $(C_LIB_H)$nTo use: #include <headers/$(C_LIB_H)>)
+lib: linker_lib export_lib export_lib_header export_lib_header_global
+	$(info Dynamic Library created with success: $(LIB) $nDynamic Library Header exported with success: $(C_LIB_H)$nTo direct use: #include <headers/$(C_LIB_H)> $nFramework Library exported with success.$nTo use Framework CWEB: #include <headers/$(GLOBAL_LIB)>)
 # can use to print: $(info your_text) $(warning your_text) or $(error your_text) # for new/break line use: $nYour_text - ex: my_text_line1 $nmy_text_line2
 
 linker_lib: cscrean clean_lib $(C_SRC:.c=.o) mv_c_obj
@@ -59,6 +61,9 @@ export_lib:
 
 export_lib_header:
 	sudo cp $(C_LIB_H) $(DLIB_DIR_H)/headers/
+
+export_lib_header_global:
+	sudo cp $(GLOBAL_LIB_DIR)/$(GLOBAL_LIB) $(DLIB_DIR_H)/headers/
 
 mv_c_obj: 
 	mv $(C_OBJ_ORI) $(C_OBJ_DIR)

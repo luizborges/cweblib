@@ -1,13 +1,13 @@
 /**
  *
- * @descripion: faz um parser dos valores passados ao servidor por meio do HTTP REQUEST METHOD GET
- * a string, é quebrada em valo e conteúdo, e inserida em um map, para facilitar a busca dos
+ * @descripion: faz um parser dos valores passados ao servidor por meio do HTTP REQUEST METHOD
+ * a string, é quebrada em valor e conteúdo, e inserida em um map, para facilitar a busca dos
  * valores pelo usuários.
  * @warning: OS VALORES SÃO APENAS PARA LEITURA, NUNCA MODIFIQUE OS VALORES PASSADOS.
  * PARA TANTO, COPIE O VALOR PARA OUTRA STRING.
  */
-#ifndef CLIENTINPUT_GET_STRMAP_H
-#define CLIENTINPUT_GET_STRMAP_H
+#ifndef CLIENTINPUT_MANAGER_H
+#define CLIENTINPUT_MANAGER_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,6 +26,8 @@ extern "C" {
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
 
+#include <headers/get_strMap.h> // trata o METHOD GET
+#include <headers/post_strMap.h> // trata o METHOD POST
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -54,13 +56,13 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
+bool CWeb_ClientInput_Init();
 
+char *CWeb_ClientInput(const char *key);
 ////////////////////////////////////////////////////////////////////////////////
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
-extern bool CWeb_ClientInput_Get_Init();
 
-extern char* ClientInput_Get_StrMap_Get(const char *get_key);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
@@ -69,7 +71,7 @@ extern char* ClientInput_Get_StrMap_Get(const char *get_key);
 #ifdef __cplusplus
 }
 #endif
-#endif // CLIENTINPUT_GET_STRMAP_H
+#endif // CLIENTINPUT_MANAGER_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

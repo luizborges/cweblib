@@ -1,14 +1,10 @@
 /**
  *
- * @descripion: como funciona o parser para encontrar a tag <?cweb CONTENT ?>
- * '<?cweb #include "name" ?>' -> inclui o objeto chamado name, que foi colocado na função ClientOuput_Se * t, onde name é o parâmetro 'name'.
- * A tag será então substituída pelo conteúdo do objeto name, pode ser um arquivo ou uma string.
- * Após a inserão, continuará a impressão do objeto de onde parou.
- * '<?cweb@' -> imprime normalemnte o valor '<?cweb' -> ou seja, o caracter '@' será omitido, porém isto  * somente ocorre com o primeiro caracter posterior. - deve-se utilizar tal valor nos comentários, pois o * parser não distingue se a linha está em um comentário ou não.
- * @ TODO - criar uma nova versão que verifica se a linha está dentro de um comentário ou não 
- *
- * NAME parameter in function ClientOuput_Set, have limits min and max - see below.
- * all character of name must be a letter (A to Z or a to z) or a digit (0 to 9) or special character ('_' and '-')
+ * @descripion: faz um parser dos valores passados ao servidor por meio do HTTP REQUEST METHOD GET
+ * a string, é quebrada em valor e conteúdo, e inserida em um map, para facilitar a busca dos
+ * valores pelo usuários.
+ * @warning: OS VALORES SÃO APENAS PARA LEITURA, NUNCA MODIFIQUE OS VALORES PASSADOS.
+ * PARA TANTO, COPIE O VALOR PARA OUTRA STRING.
  */
 #ifndef CLIENTINPUT_GET_STRMAP_H
 #define CLIENTINPUT_GET_STRMAP_H
@@ -30,7 +26,6 @@ extern "C" {
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
 
-#include <headers/clientInput_get.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -55,15 +50,18 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Constructs
 ////////////////////////////////////////////////////////////////////////////////
-extern ClientInput_Get_t ClientInput_Get_StrMap_New_Interface();
-
-extern ClientInput_Get_t ClientInput_Get_StrMap_Singleton_Interface();
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Interface
+////////////////////////////////////////////////////////////////////////////////
+extern bool CWeb_ClientInput_Get_Init();
+
 extern char* ClientInput_Get_StrMap_Get(const char *get_key);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
 ////////////////////////////////////////////////////////////////////////////////

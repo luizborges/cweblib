@@ -1,9 +1,13 @@
 /**
  *
- * @descripion: estabelece a interface para tratamento do method GET do HTTP
+ * @descripion: faz um parser dos valores passados ao servidor por meio do HTTP REQUEST METHOD GET
+ * a string, é quebrada em valor e conteúdo, e inserida em um map, para facilitar a busca dos
+ * valores pelo usuários.
+ * @warning: OS VALORES SÃO APENAS PARA LEITURA, NUNCA MODIFIQUE OS VALORES PASSADOS.
+ * PARA TANTO, COPIE O VALOR PARA OUTRA STRING.
  */
-#ifndef CLIENTINPUT_GET_H
-#define CLIENTINPUT_GET_H
+#ifndef CLIENTINPUT_POST_STRMAP_H
+#define CLIENTINPUT_POST_STRMAP_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,6 +16,15 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
+
+#include <headers/abstractFactoryCommon.h>
+#include <headers/fileUtil.h>
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,23 +52,15 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// Interface
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct
-{
-	void *self; // guarda o objeto criado pela classe real
-	
-	// funções da interface
-	char* Get(const char *get_key);
-} ClientInput_Get_o;
-
-typedef ClientInput_Get_o* ClientInput_Get_t;
-
-////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Interface
+////////////////////////////////////////////////////////////////////////////////
+extern bool CWeb_ClientInput_Post_Init();
+
+extern char* ClientInput_Post_StrMap_Get(const char *get_key);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
@@ -64,7 +69,7 @@ typedef ClientInput_Get_o* ClientInput_Get_t;
 #ifdef __cplusplus
 }
 #endif
-#endif // CLIENTINPUT_GET_H
+#endif // CLIENTINPUT_POST_STRMAP_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

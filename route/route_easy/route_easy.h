@@ -46,7 +46,9 @@ extern "C" {
  */
 #define CWeb_Route_Init(PATH, FUNC) \
 	char *cweb_route_path = getenv("PATH_INFO"); \
-	if(strcmp(cweb_route_path, PATH) == 0) {\
+	if(cweb_route_path == NULL) {\
+		FUNC;\
+	} else if(strcmp(cweb_route_path, PATH) == 0) {\
 		FUNC;\
 	}
 

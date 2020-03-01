@@ -1,35 +1,29 @@
 /**
  *
- * @descripion: funciona como um header que contém todas as bibliotecas, é necessário apenas adicionar
- * essa biblioteca para ter acesso a todas a biblioteca.
+ * @descripion: Interface qu gerencia o cookie em alto, provê uma camada de abstração
+ * , para melhor manutenção da biblioteca e usabilidade.
  */
-#ifndef CWEB_H
-#define CWEB_H
+#ifndef COOKIE_MANAGER_H
+#define COOKIE_MANAGER_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-// Includes - Client Output
+// Includes
 ////////////////////////////////////////////////////////////////////////////////
-#include <headers/clientOutput_strMap.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
 
-////////////////////////////////////////////////////////////////////////////////
-// Includes - Client Input
-////////////////////////////////////////////////////////////////////////////////
-#include <headers/clientInput_manager.h>
+#include <headers/abstractFactoryCommon.h>
+#include <headers/fileUtil.h>
 
-
-////////////////////////////////////////////////////////////////////////////////
-// Includes - Route
-////////////////////////////////////////////////////////////////////////////////
-#include <headers/route_easy.h>
-
-////////////////////////////////////////////////////////////////////////////////
-// Includes - Cookies
-////////////////////////////////////////////////////////////////////////////////
-
+#include <headers/cookie_strMap.h> // função utilizada para implementar os cookies
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -55,9 +49,29 @@ extern "C" {
 // Constructs
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
+////////////////////////////////////////////////////////////////////////////////
+bool CWeb_Cookie_Init();
+
+char *CWeb_Cookie_Get(const char *key);
+
+/**
+ * Retorna uma string com a montagem do cookie corretamente, já para ser impersso
+ * na saída.
+ * @arg value: não precisa ser encode, ele será codificado pela própria função.
+ * @arg cookie: string em que será armazenado o cookie.
+ * Caso o tamanho da string seja insuficiente, será realocado o tamanho para caber
+ * a string
+ * @return o ponteiro para a string cookie.
+ */
+char *CWeb_Cookie_Set(const char *key, const char *value,
+                      const long int expires_sec,
+                      const char *domain, const char *path,
+                      const bool isSecure, const bool isHttpOnly,
+                      char *cookie);
+////////////////////////////////////////////////////////////////////////////////
+// Interface
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -68,7 +82,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-#endif // CWEB_H
+#endif // COOKIE_MANAGER_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

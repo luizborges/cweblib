@@ -206,6 +206,19 @@ CWeb_ClientInput_Post_Init()
 	if(strcmp(rm, "POST") != 0) {
 		return false;
 	}
+	char *ct = getenv("CONTENT_TYPE");
+	if(ct == NULL) { 
+		fprintf(stderr, "CWEB- CLIENT INPUT - POST_STRMAP - getenv(\"CONTENT_TYPE\") is NULL.\n"
+			"Function: \"%s\"\nLine: %d\nFile: \"%s\"\n", __func__,__LINE__, __FILE__);
+		return false;
+	}
+	if(strcmp(ct, "application/x-www-form-urlencoded") != 0) {
+		fprintf(stderr, "CWEB- CLIENT INPUT - POST_STRMAP - getenv(\"CONTENT_TYPE\") is \"%s\".\n"
+			"This library only implemented getenv(\"CONTENT_TYPE\") = \"application/x-www-form-urlencoded\"\n"
+			"Function: \"%s\"\nLine: %d\nFile: \"%s\"\n",
+			ct, __func__,__LINE__, __FILE__);
+		return false;
+	}
 	
 	Post_StrMap_t post = _Post_StrMap_Singleton();
 	

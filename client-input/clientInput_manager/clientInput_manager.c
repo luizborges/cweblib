@@ -45,7 +45,10 @@ bool
 CWeb_ClientInput_Init()
 {
 	char *rm = getenv("REQUEST_METHOD");
-	if(rm == NULL) return false;
+	if(rm == NULL) {
+		fprintf(stderr, "CWEB - CLIENT INPUT - getenv(\"REQUEST_METHOD\") is NULL");
+		return false;
+	}
 	
 	// descobre qual o REQUEST_METHOD passado
 	if(strcmp(rm, "GET") == 0) {
@@ -53,11 +56,23 @@ CWeb_ClientInput_Init()
 		return CWeb_ClientInput_Get_Init();
 	}
 	else if(strcmp(rm, "POST") == 0) {
+		char *ct = getenv("CONTENT_TYPE");
+		if(ct == NULL) {
+			Error("CWEB - CLIENT INPUT - REQUEST_METHOD is POST\n"
+				"CONTENT_TYPE expected is \"application/x-www-form-urlencoded\"\n"
+				"CONTENT_TYPE passed is \"%s\"", ct);
+		}
+		else if(strcmp(ct, "application/x-www-form-urlencoded") != 0) {
+			Error("CWEB - CLIENT INPUT - REQUEST_METHOD is POST\n"
+				"CONTENT_TYPE expected is \"application/x-www-form-urlencoded\"\n"
+				"CONTENT_TYPE passed is \"%s\"", ct);
+		}
 		clientInput_get = ClientInput_Post_StrMap_Get;
 		return CWeb_ClientInput_Post_Init();
 	}
 	else {
-		Error("REQUEST_METHOD do not recognize.\nREQUEST_METHOD = \"%s\"", rm);
+		Error("CWEB - CLIENT INPUT - REQUEST_METHOD do not recognize.\n"
+			"REQUEST_METHOD = \"%s\"", rm);
 	}
 	
 	return false;

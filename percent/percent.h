@@ -1,10 +1,9 @@
 /**
  *
- * @descripion: Interface qu gerencia o cookie em alto, provê uma camada de abstração
- * , para melhor manutenção da biblioteca e usabilidade.
+ * @descripion: 
  */
-#ifndef COOKIE_MANAGER_H
-#define COOKIE_MANAGER_H
+#ifndef PERCENT_H
+#define PERCENT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,10 +19,7 @@ extern "C" {
 #include <stdbool.h>
 #include <ctype.h>
 
-#include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
-
-#include <headers/cookie_strMap.h> // função utilizada para implementar os cookies
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -52,28 +48,23 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
-bool CWeb_Cookie_Init();
 
-char *CWeb_Cookie_Get(const char *key);
-
-/**
- * Retorna uma string com a montagem do cookie corretamente, já para ser impersso
- * na saída.
- * @arg value: não precisa ser encode, ele será codificado pela própria função.
- * @arg cookie: string em que será armazenado o cookie.
- * Caso o tamanho da string seja insuficiente, será realocado o tamanho para caber
- * a string
- */
-char *CWeb_Cookie_Set(const char *key, const char *value,
-                      const long int expires_sec,
-                      const char *domain, const char *path,
-                      const bool isSecure, const bool isHttpOnly,
-                      char *cookie);
 ////////////////////////////////////////////////////////////////////////////////
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
+extern bool
+CWeb_Percent_Decode(char* out,
+                    const char* in,
+                    const int maxDecode);
 
-
+/**
+ * substituiu o character ' ' pelo character '+'.
+ * @return retorna a string codificada em caso de acerto.
+ * em caso de erro, retorna NULL.
+ */
+extern char*
+CWeb_Percent_Encode(const char* in,
+                    const int maxEncode);
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +72,7 @@ char *CWeb_Cookie_Set(const char *key, const char *value,
 #ifdef __cplusplus
 }
 #endif
-#endif // COOKIE_MANAGER_H
+#endif // PERCENT_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

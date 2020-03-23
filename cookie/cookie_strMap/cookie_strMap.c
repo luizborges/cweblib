@@ -3,23 +3,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
-#include "post_strMap.h"
+#include "cookie_strMap.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Private Structs
 ////////////////////////////////////////////////////////////////////////////////
 typedef struct
 {
-
-	char  *str; // keep all the post encode content - key + value - é o post tal como recebido no stdin
-	char  *value; // only the value of the post's decode content
+	char  *str; // str cookie decode
 	size_t size; // ambas as strings tem o mesmo tamanho -> str e value, always
 	
 	map_t map;
-} Post_StrMap_o;
+} Cookie_StrMap_o;
 
 
-typedef Post_StrMap_o* Post_StrMap_t;
+typedef Cookie_StrMap_o* Cookie_StrMap_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Private Variables
@@ -29,164 +27,116 @@ typedef Post_StrMap_o* Post_StrMap_t;
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions Head
 ////////////////////////////////////////////////////////////////////////////////
-static Post_StrMap_t _Post_StrMap_New();
-static Post_StrMap_t _Post_StrMap_Singleton();
-static int _Post_StrMap_Percent_Decode(char* out, const char* in, const int maxDecode);
+static Cookie_StrMap_t _Cookie_StrMap_New();
+static Cookie_StrMap_t _Cookie_StrMap_Singleton();
+static void _Cookie_StrMap_Fill_Map(const char *str, const int   strLen, char *strDecode, map_t map);
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions Inline
 ////////////////////////////////////////////////////////////////////////////////
-static inline void
-_Post_StrMap_Fill_Map(const char *postStr,
-                     const size_t postStrLen,
-                     char *postStrDecode,
-                     map_t map)
+
+////////////////////////////////////////////////////////////////////////////////
+// Private Functions
+////////////////////////////////////////////////////////////////////////////////
+static void
+_Cookie_StrMap_Fill_Map(const char *str,
+						const int   strLen,
+						char *strDecode,
+						map_t map)
 {
 	int posInitNextStr = 0;
-	for(int i=0; i < postStrLen; ++i)
+	for(int i=0; i < strLen; ++i)
 	{
 		///////////////////////////////////////////////////////////////////
-		// busca, decodifica chave do post - um par de key e conteúdo
+		// busca, decodifica chave do ENCODE - um par de key e conteúdo
 		///////////////////////////////////////////////////////////////////
-		const char *key = &postStr[i];
+		const char *key = &str[i];
 		if(key == NULL) {
-			Error("in post the key of the HTTP REQUEST METHOD POST.\nHTTP REQUEST METHOD POST = \"%s\"", postStr);
+			Error("in cookie the key of the HTTP COOKIE.\n"
+				"HTTP COOKIE = \"%s\"", str);
 		}
 		
 		int keyLen = 0;
-		for(; i < postStrLen && key[keyLen] != '='; ++keyLen) {++i;} // descobre o tamanho de key
+		for(; i < strLen && key[keyLen] != '='; ++keyLen) {++i;} // descobre o tamanho de key
 		
 		
-		char *keyDecode = &postStrDecode[posInitNextStr];
-		if(_Post_StrMap_Percent_Decode(keyDecode, key, keyLen) != 0) { // decode the key
-			Error("decoding key in HTTP REQUEST METHOD POST.\nkey enconding: \"%s\"\nkey decode (wrong value): \"%s\"\nKey length: %d\nHTTP post: \"%s\"\n", key, keyDecode, keyLen, postStr);
+		char *keyDecode = &strDecode[posInitNextStr];
+		if(CWeb_Percent_Decode(keyDecode, key, keyLen) == false) { // decode the key
+			Error("decoding key in HTTP COOKIE.\nkey enconding: \"%s\"\n"
+				"key decode (wrong value): \"%s\"\nKey length: %d\n"
+				"HTTP COOKIE: \"%s\"\n", key, keyDecode, keyLen, str);
 		}
 		posInitNextStr += strlen(keyDecode) +2; // atualiza a nova posição inicial
 		
 		///////////////////////////////////////////////////////////////////
-		// busca, decodifica contéudo do post - um par de key e contéudo
+		// busca, decodifica contéudo da STR ENCODE - um par de key e contéudo
 		///////////////////////////////////////////////////////////////////
-		const char *content = &postStr[++i]; // seta o início da string do content
+		const char *content = &str[++i]; // seta o início da string do content
 		int contentLen = 0;
-		for(; i < postStrLen && content[contentLen] != '&';
+		for(; i < strLen && content[contentLen] != ';';
 			++contentLen) { ++i; } // descobre o tamanho do content
 		
 		
-		char *contentDecode = &postStrDecode[posInitNextStr]; // recebe a posição no array de conteúdo própria para guardar o valor
-		if(_Post_StrMap_Percent_Decode(contentDecode, content, contentLen) != 0) { // decode o conteúdo do par do post
-			Error("decoding content in HTTP REQUEST METHOD POST.\ncontent enconding: \"%s\"\nkey decode (wrong value): \"%s\"\ncontent length: %d\nHTTP POST: \"%s\"\n", content, contentDecode, contentLen, postStr);
+		char *contentDecode = &strDecode[posInitNextStr]; // recebe a posição no array de conteúdo própria para guardar o valor
+		if(CWeb_Percent_Decode(contentDecode, content, contentLen) == false) { // decode o conteúdo do par do get
+			Error("decoding content in HTTP COOKIE.\ncontent enconding: \"%s\"\nkey decode (wrong value): \"%s\"\ncontent length: %d\nHTTP COOKIE: \"%s\"\n", content, contentDecode, contentLen, str);
 		}
 		posInitNextStr += strlen(contentDecode) +2; // atualiza a nova posição inicial
+		// atualiza a posição - final do conteúdo é "; "
+		// é necessário para buscar o próximo key se houver
+		++i;
 		
 		///////////////////////////////////////////////////////////////////
-		// insere no map o key e o conteúdo - atualiza a posição na array do post
+		// insere no map o key e o conteúdo - atualiza a posição na array do get
 		///////////////////////////////////////////////////////////////////
 		map->Set(map->self, keyDecode, contentDecode);
 	}
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Private Functions
-////////////////////////////////////////////////////////////////////////////////
-static int
-_Post_StrMap_Percent_Decode(char* out,
-                            const char* in,
-                            const int maxDecode)
-{
-    static const char tbl[256] = {
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-         0, 1, 2, 3, 4, 5, 6, 7,  8, 9,-1,-1,-1,-1,-1,-1,
-        -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1
-    };
-    char c, v1, v2, *beg=out;
-    int numDecode = 0;
-    if(in != NULL) {
-//        while(((c=*in++) != '\0') && numDecode < maxDecode) {
-		while(numDecode < maxDecode) {
-			c=*in++;
-            if(c == '%') {
-                if((v1=tbl[(unsigned char)*in++])<0 || 
-                   (v2=tbl[(unsigned char)*in++])<0) {
-                    *beg = '\0';
-                    return -1;
-                }
-                c = (v1<<4)|v2;
-                numDecode += 2;
-            } else if(c == '+') {
-            	*out++ = ' ';
-            	++numDecode;
-            	continue;
-            }
-            *out++ = c;
-            ++numDecode;
-        }
-    }
-    *out = '\0';
-    return 0;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Construct Functions
 ////////////////////////////////////////////////////////////////////////////////
-static Post_StrMap_t
-_Post_StrMap_New()
+static Cookie_StrMap_t
+_Cookie_StrMap_New()
 {
-	Post_StrMap_t post = MM_Malloc(sizeof(Post_StrMap_o));
-	if(post == NULL) {
-		Error("Allocated Space for Client Input Post - String Map");
+	Cookie_StrMap_t cookie = MM_Malloc(sizeof(Cookie_StrMap_o));
+	if(cookie == NULL) {
+		Error("Allocated Space for Cookie - String Map");
 	}
 	
-	post->str = MM_Malloc(2048);
-	if(post->str == NULL) {
-		Error("Allocated Space for Client Input Post - String To Keep Post Enconding Content: key + value");
+	cookie->str = MM_Malloc(2048);
+	if(cookie->str == NULL) {
+		Error("Allocated Space for Cookie - String Default");
 	}
 	
-	post->value = MM_Malloc(2048);
-	if(post->value == NULL) {
-		Error("Allocated Space for Client Input Post - String To Keep Post Decode Value");
-	}
+	cookie->size = 2048;
 	
-	post->size = 2048;
-	
-	post->map = Abstract_Factory_Common(Map);
-	if(post->map == NULL) {
+	cookie->map = Abstract_Factory_Common(Map);
+	if(cookie->map == NULL) {
 		Error("creating map");
 	}
 	
-	return post;
+	return cookie;
 }
 
 
-static Post_StrMap_t
-_Post_StrMap_Singleton()
+static Cookie_StrMap_t
+_Cookie_StrMap_Singleton()
 {
-	static Post_StrMap_t post = NULL;
+	static Cookie_StrMap_t cookie = NULL;
 	
-	if(post == NULL)
+	if(cookie == NULL)
 	{
-		post = _Post_StrMap_New();
-		if(post == NULL)
+		cookie = _Cookie_StrMap_New();
+		if(cookie == NULL)
 		{
-			Error("could not create singleton instance of Client Input Post.");
+			Error("could not create singleton instance of Cookie String Map.");
 		}
 	}
 	
-	return post;
+	return cookie;
 }
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Public Functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,103 +145,166 @@ _Post_StrMap_Singleton()
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
 /**
- * Insere a string do http request method post in a map format
+ * Insere a string do http cookie in a map format
  */
 bool
-CWeb_ClientInput_Post_Init()
+CWeb_Cookie_Init()
 {
-	// verifica se é possível inicializar o post
-	char *rm = getenv("REQUEST_METHOD");
-	if(rm == NULL) return false;
-	if(strcmp(rm, "POST") != 0) {
-		return false;
-	}
-	char *ct = getenv("CONTENT_TYPE");
-	if(ct == NULL) { 
-		fprintf(stderr, "CWEB- CLIENT INPUT - POST_STRMAP - getenv(\"CONTENT_TYPE\") is NULL.\n"
-			"Function: \"%s\"\nLine: %d\nFile: \"%s\"\n", __func__,__LINE__, __FILE__);
-		return false;
-	}
-	if(strcmp(ct, "application/x-www-form-urlencoded") != 0) {
-		fprintf(stderr, "CWEB- CLIENT INPUT - POST_STRMAP - getenv(\"CONTENT_TYPE\") is \"%s\".\n"
-			"This library only implemented getenv(\"CONTENT_TYPE\") = \"application/x-www-form-urlencoded\"\n"
-			"Function: \"%s\"\nLine: %d\nFile: \"%s\"\n",
-			ct, __func__,__LINE__, __FILE__);
+	Cookie_StrMap_t cookie = _Cookie_StrMap_Singleton();
+	cookie->map->Clean(cookie->map->self); // remove todas as chaves do map
+	
+	char *cookieStr = getenv("HTTP_COOKIE");
+	if(cookieStr == NULL) {
+		MError("NO COOKIE");
 		return false;
 	}
 	
-	Post_StrMap_t post = _Post_StrMap_Singleton();
-	
-	post->map->Clean(post->map->self); // remove todas as chaves do map
-	
-	///////////////////////////////////////////////////////////////////
-	// verifica o tamanho do post, verfica o tamanho dos buffers
-	///////////////////////////////////////////////////////////////////
-	char *postSizeStr = getenv("CONTENT_LENGTH");
-	size_t postSize = strtol(postSizeStr, NULL, 0);
-	
-	if(postSize >= post->size)
+	// verifica se existe espaco para guardar o cookie
+	size_t cookieStrLen = strlen(cookieStr);
+	if(cookie->size <= cookieStrLen)
 	{
-		MM_Free(post->str);
-		MM_Free(post->value);
+		cookie->size = cookieStrLen +1; // for character `\0`
+		MM_Free(cookie->str);
 		
-		post->size = postSize + 1; // to keep character '\0'
-		
-		post->str = MM_Malloc(post->size);
-		if(post->str == NULL) {
-		Error("Allocated Space for Client Input Post - String To Keep Post Enconding Content:"
-			"key + value\nPost Size String: %ld\nCONTENT_LENGTH string: \"%s\"\n"
-			"CONTENT_LENGTH: %ld", post->size, postSizeStr, postSize);
-	}
-	
-		post->value = MM_Malloc(post->size);
-		if(post->value == NULL) {
-		Error("Allocated Space for Client Input Post - String To Keep Post Decode Value\nPost Size String: %ld\nCONTENT_LENGTH string: \"%s\"\nCONTENT_LENGTH: %ld", post->size, postSizeStr, postSize);
+		cookie->str = MM_Malloc(cookie->size);
+		if(cookie->str == NULL) {
+			Error("Allocated Space for Cookie - String Default");
 		}
 	}
+//	MError("http-cookie init::\n\"%s\"", cookieStr);
+	_Cookie_StrMap_Fill_Map(cookieStr, cookieStrLen, cookie->str, cookie->map);
 	
-	// insere o post dentro da string para realiar a leitura
-	size_t read = fread(post->str, sizeof(char), postSize, stdin);
-	if(read != postSize) {
-		Error("reading post content and putting it into postStr.\nRead in post content: %ld\n"
-			"CONTENT_LENGTH string: \"%s\"\nCONTENT_LENGTH: %ld", read, postSizeStr, postSize);
-	}
-	
-	_Post_StrMap_Fill_Map(post->str, postSize, post->value, post->map); // decodifica e insere os values do ost dentro do map
-	
-	return true; // foi possível inicializar o HTTP REQUEST METHOD POST no mapa de busca
+	return true;
 }
 
 
-/**
- * 
- */
 char*
-ClientInput_Post_StrMap_Get(const char *post_key)
+CWeb_Cookie_Get(const char *key)
 {
-	if(post_key == NULL) { // check arg
+	if(key == NULL) { // check arg
 		Error("the key to fetch must be not NULL.");
 	}
 	
-	Post_StrMap_t post = _Post_StrMap_Singleton();
+	Cookie_StrMap_t cookie = _Cookie_StrMap_Singleton();
 	
-	if(post->map->HasKey(post->map->self, post_key) == true) {
-		return post->map->Get(post->map->self, post_key);
+	if(cookie->map->HasKey(cookie->map->self, key) == true) {
+		return cookie->map->Get(cookie->map->self, key);
 	} else {
 		int len = -1;
-		char **key = post->map->Key(post->map->self, &len);
-		fprintf(stderr, "List of all keys in HTTP REQUEST METHOD POST that be parsed.\n");
+		char **_key = cookie->map->Key(cookie->map->self, &len);
+		MError("List of all keys in HTTP COOKIE that be parsed:");
 		for(int i=0; i < len; ++i) {
-			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, key[i]);
+			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
 		}
 		
-		Error("fetch for a no key of HTTP REQUEST METHOD POST.\nfectch key = \"%s\"", post_key);
+		Error("fetch for a no key of HTTP COOKIE.\nfectch key = \"%s\"", key);
 	}
 	
 	return NULL; // nunca é alcançado
 }
 
 
+
+char*
+CWeb_Cookie_Set(const char *key, const char *value,
+				const size_t expires_sec,
+				const char *domain, const char *path,
+				const bool isSecure, const bool isHttpOnly)
+{
+	///////////////////////////////////////////////////////////////////
+	// check the args
+	///////////////////////////////////////////////////////////////////
+	if(key == NULL) {
+		Error("Cookie Set Key is NULL.");
+	}
+	if(strlen(key) < 1) {
+		Error("Cookie Set Key is a empty string.");
+	}
+	
+	if(value == NULL) {
+		Error("Cookie Set Value is NULL.\n key is \"%s\"", key);
+	}
+	if(strlen(value) < 1) {
+		Error("Cookie Set Value is a empty string.");
+	}
+	
+	
+	if(expires_sec < 0) {
+		Error("Cookie Set Expires seconds cannot be less than zero.\n"
+			"Uses 0 to not set expires time to cookie.\n"
+			"Expires seconds passed is %d", expires_sec);
+	}
+	
+	///////////////////////////////////////////////////////////////////
+	// cookie set -
+	///////////////////////////////////////////////////////////////////
+	FILE *tmp = tmpfile();
+	if(tmp == NULL) {
+		Error("Cookie Set Cannot Create a temporary file.");
+	}
+	
+	fprintf(tmp, "Set-Cookie: %s=%s",
+		key, CWeb_Percent_Encode(value, strlen(value)));
+		
+	///////////////////////////////////////////////////////////////////
+	// cookie set - time
+	///////////////////////////////////////////////////////////////////
+	if(expires_sec > 0)
+	{
+		time_t expires = time(NULL) + expires_sec;
+		struct tm *localTimeExp = localtime(&expires);
+		if(localTimeExp == NULL) {
+			Error("Local Time is NULL.\n returned from localtime() C function.");
+		}
+		
+		char *strtime = asctime(localTimeExp);
+		if(strtime == NULL) {
+			Error("String of Local Time is NULL.\nreturned from asctime() C function.");
+		}
+		
+		strtime[24] = '\0'; // retira o character '\n' da string
+		fprintf(tmp, "; Expires=%s", strtime);
+	}
+	
+	///////////////////////////////////////////////////////////////////
+	// seta os outros atributos
+	///////////////////////////////////////////////////////////////////
+	if(domain != NULL)
+	{
+		if(strlen(domain) < 1) {
+			Error("Cookie Set Domain cannot be a empty string.");
+		}
+		
+		fprintf(tmp, "; Domain=%s", domain);
+	}
+	
+	if(path != NULL)
+	{
+		if(strlen(path) < 1) {
+			Error("Cookie Set Path cannot be a empty string.");
+		}
+		
+		fprintf(tmp, "; Path=%s", path);
+	}
+	
+	if(isSecure == true)
+	{
+		fprintf(tmp, "; Secure");
+	}
+	
+	if(isHttpOnly == true)
+	{
+		fprintf(tmp, "; HttpOnly");
+	}
+	
+	fprintf(tmp, "\r\n"); // para indicar o fim do cookie
+	///////////////////////////////////////////////////////////////////
+	// return the string
+	///////////////////////////////////////////////////////////////////
+	rewind(tmp);
+	char *cookie = FileUtil_StrMap(tmp, "file"); // já fecha o arquivo
+	return cookie;
+}
 
 
 

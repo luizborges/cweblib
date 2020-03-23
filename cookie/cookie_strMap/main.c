@@ -1,7 +1,7 @@
 
 #include <assert.h>
 #include <headers/stackTracer.h>
-#include <headers/clientOutput.h>
+#include "cookie_strMap.h"
 
 
 #define _ printf("Get here...: %d\n", __LINE__);
@@ -14,13 +14,22 @@ void test1();
 int main(void) {
 	MM_Init();
 	StackTracer_Init();
+
+	test1(); 	
  	
- 	
-  return 0;
+	return 0;
 }
 
 void test1() {
+	printf("\n*******************************************************\n");
 	printf("Func: %s\n", __func__);
+	printf("*******************************************************\n");
+	
+	char *cookie = CWeb_Cookie_Set("sid", "my ful name", 180, "www.google.com",
+		"/home/borges", true, true);
+	printf("cookie 1::\n\"%s\"\n", cookie);
+	time_t t = time(NULL);
+	printf("time: %s\n", ctime(&t));
 }
 
 

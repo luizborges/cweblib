@@ -200,6 +200,10 @@ _Post_StrMap_Singleton()
 bool
 CWeb_ClientInput_Post_Init()
 {
+	Post_StrMap_t post = _Post_StrMap_Singleton();	
+	post->map->Clean(post->map->self); // remove todas as chaves do map
+
+
 	// verifica se é possível inicializar o post
 	char *rm = getenv("REQUEST_METHOD");
 	if(rm == NULL) return false;
@@ -219,10 +223,6 @@ CWeb_ClientInput_Post_Init()
 			ct, __func__,__LINE__, __FILE__);
 		return false;
 	}
-	
-	Post_StrMap_t post = _Post_StrMap_Singleton();
-	
-	post->map->Clean(post->map->self); // remove todas as chaves do map
 	
 	///////////////////////////////////////////////////////////////////
 	// verifica o tamanho do post, verfica o tamanho dos buffers

@@ -1,13 +1,9 @@
 /**
  *
- * @descripion: faz um parser dos valores passados ao servidor por meio do HTTP REQUEST METHOD GET
- * a string, é quebrada em valor e conteúdo, e inserida em um map, para facilitar a busca dos
- * valores pelo usuários.
- * @warning: OS VALORES SÃO APENAS PARA LEITURA, NUNCA MODIFIQUE OS VALORES PASSADOS.
- * PARA TANTO, COPIE O VALOR PARA OUTRA STRING.
+ * @descripion: 
  */
-#ifndef CLIENTINPUT_POST_STRMAP_H
-#define CLIENTINPUT_POST_STRMAP_H
+#ifndef COOKIE_STRMAP_H
+#define COOKIE_STRMAP_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,6 +22,7 @@ extern "C" {
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
 
+#include <headers/percent.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -58,9 +55,24 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
-extern bool CWeb_ClientInput_Post_Init();
+extern bool CWeb_Cookie_Init();
 
-extern char* ClientInput_Post_StrMap_Get(const char *get_key);
+extern char *CWeb_Cookie_Get(const char *key);
+
+
+/**
+ * os valores key e value, não podem ser NULL e também não podem ser uma
+ * string vazia.
+ * Insert the string: " GMT" ao final do tempo designado.
+ * O tempo é recuperado com a função localtime(time(NULL) + expires_sec)
+ * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
+ * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
+ * Ao final da string do cookie é incluído o charactere '\n'
+ */
+extern char *CWeb_Cookie_Set(const char *key, const char *value,
+								const size_t expires_sec,
+								const char *domain, const char *path,
+								const bool isSecure, const bool isHttpOnly);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
@@ -69,7 +81,7 @@ extern char* ClientInput_Post_StrMap_Get(const char *get_key);
 #ifdef __cplusplus
 }
 #endif
-#endif // CLIENTINPUT_POST_STRMAP_H
+#endif // COOKIE_STRMAP_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

@@ -13,11 +13,8 @@ typedef struct
 {
 
 //
-	char *strD; // 2048 - size default with character '\0'
-	int strDSize;
-	
-	char *strL; // para tratar quando a getenv("REQUEST_METHOD") for maior que 2048
-	int strLSize;
+	char *str; // 2048 - size default with character '\0'
+	int  size;
 	
 	map_t map;
 } Get_StrMap_o;
@@ -152,14 +149,12 @@ _Get_StrMap_New()
 		Error("Allocated Space for Client Input Get - String Map");
 	}
 	
-	get->strD = MM_Malloc(2048);
-	if(get->strD == NULL) {
+	get->str = MM_Malloc(2048);
+	if(get->str == NULL) {
 		Error("Allocated Space for Client Input Get - String Default");
 	}
 	
-	get->strDSize = 2048;
-	get->strL = NULL;
-	get->strLSize = -1;
+	get->size = 2048;
 	
 	get->map = Abstract_Factory_Common(Map);
 	if(get->map == NULL) {
@@ -200,16 +195,22 @@ _Get_StrMap_Singleton()
 bool
 CWeb_ClientInput_Get_Init()
 {
+	///////////////////////////////////////////////////////////////////
+	// incializa o GET e deixa ele limpo
+	///////////////////////////////////////////////////////////////////
+	// necessario para evitar erros e falhas de seguranca e 
+	// ficar sicronizado com o estado atual do http
+	Get_StrMap_t get = _Get_StrMap_Singleton();
+	get->map->Clean(get->map->self); // remove todas as chaves do map
+	
+	
+	
 	// verifica se é possível inicializar o get
 	char *rm = getenv("REQUEST_METHOD");
 	if(rm == NULL) return false;
 	if(strcmp(rm, "GET") != 0) {
 		return false;
 	}
-	
-	Get_StrMap_t get = _Get_StrMap_Singleton();
-	
-	get->map->Clean(get->map->self); // remove todas as chaves do map
 	
 	///////////////////////////////////////////////////////////////////
 	// recebe o get string
@@ -220,38 +221,21 @@ CWeb_ClientInput_Get_Init()
 	}
 	int getStrLen = strlen(getStr);
 	
-	char *getStrDecode = NULL; // string para unificação do tratamento
-	if(getStrLen < get->strDSize) // dentro do tamanho padrão
+	if(get->size <= getStrLen)
 	{
-		getStrDecode = get->strD;
-	} else // maior que o tamanho padrão
-	{
-		if(get->strL == NULL) // se a string long not initialized
-		{
-			get->strLSize = getStrLen +1; // por causa do charactere '\0'
-			get->strL = MM_Malloc(get->strLSize);
-			if(get->strL == NULL) {
-				Error("in allocated memory to http request method get string.\n"
-					"GET String length (return of strlen()): %d\nGET String = \"%s\"", getStrLen, getStr);
-			}
+		get->size = getStrLen +1; // for character `\0`
+		MM_Free(get->str);
+		
+		get->str = MM_Malloc(get->size);
+		if(get->str == NULL) {
+			Error("Allocated Space for Get - String Default");
 		}
-		else if(getStrLen >= get->strLSize) // se a string long for menor que o GET
-		{
-			get->strLSize = getStrLen +1; // por causa do charactere '\0'
-			get->strL = MM_Realloc(get->strL, get->strLSize);
-			if(get->strL == NULL) {
-				Error("in allocated memory to http request method get string.\n"
-					"GET String length (return of strlen()): %d\nGET String = \"%s\"", getStrLen, getStr);
-			}
-		}
-		//else {} // - não é necessário fazer nada quando o GET é menor que a string long
-		getStrDecode = get->strL;
 	}
 	
 	///////////////////////////////////////////////////////////////////
 	// insere a string no map
 	///////////////////////////////////////////////////////////////////
-	_Get_StrMap_Fill_Map(getStr, getStrLen, getStrDecode, get->map);
+	_Get_StrMap_Fill_Map(getStr, getStrLen, get->str, get->map);
 	
 	
 	return true; // foi possível inicializar o HTTP REQUEST METHOD GET no mapa de busca

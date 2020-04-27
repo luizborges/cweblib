@@ -30,7 +30,6 @@ typedef Cookie_StrMap_o* Cookie_StrMap_t;
 static Cookie_StrMap_t _Cookie_StrMap_New();
 static Cookie_StrMap_t _Cookie_StrMap_Singleton();
 static void _Cookie_StrMap_Fill_Map(const char *str, const int   strLen, char *strDecode, map_t map);
-static void _Cookie_Set(const char *key, const char *value, const size_t expires_sec, const char *domain, const char *path, const bool isSecure, const bool isHttpOnly, FILE *output);
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions Inline
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,107 +90,6 @@ _Cookie_StrMap_Fill_Map(const char *str,
 		///////////////////////////////////////////////////////////////////
 		map->Set(map->self, keyDecode, contentDecode);
 	}
-}
-
-static void
-_Cookie_Set(const char *key, const char *value,
-			const size_t expires_sec,
-			const char *domain, const char *path,
-			const bool isSecure, const bool isHttpOnly,
-			FILE *output)
-{
-	///////////////////////////////////////////////////////////////////
-	// check the args
-	///////////////////////////////////////////////////////////////////
-	if(key == NULL) {
-		Error("Cookie Set Key is NULL.");
-	}
-	if(strlen(key) < 1) {
-		Error("Cookie Set Key is a empty string.");
-	}
-	
-	if(value == NULL) {
-		Error("Cookie Set Value is NULL.\n key is \"%s\"", key);
-	}
-	if(strlen(value) < 1) {
-		Error("Cookie Set Value is a empty string.");
-	}
-	
-	
-	if(expires_sec < 0) {
-		Error("Cookie Set Expires seconds cannot be less than zero.\n"
-			"Uses 0 to not set expires time to cookie.\n"
-			"Expires seconds passed is %d", expires_sec);
-	}
-	
-	///////////////////////////////////////////////////////////////////
-	// cookie set -
-	///////////////////////////////////////////////////////////////////
-	fprintf(output, "Set-Cookie: %s=%s",
-		key, CWeb_Percent_Encode(value, strlen(value)));
-		
-	///////////////////////////////////////////////////////////////////
-	// cookie set - time
-	///////////////////////////////////////////////////////////////////
-	if(expires_sec > 0)
-	{
-		time_t expires = time(NULL) + expires_sec;
-		struct tm *localTimeExp = localtime(&expires);
-		if(localTimeExp == NULL) {
-			Error("Local Time is NULL.\n returned from localtime() C function.");
-		}
-		
-		char *st = asctime(localTimeExp);
-		if(st == NULL) {
-			Error("String of Local Time is NULL.\nreturned from asctime() C function.");
-		}
-		fprintf(output, "; Expires=");
-		// segue o padrão RFC 7231, section 7.1.1.2: Date 	Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Date
-		// Date: <day-name>, <day> <month> <year> <hour>:<minute>:<second> GMT
-		// Date: Wed, 21 Oct 2015 07:28:00 GMT 
-		// DDD MMM dd hh:mm:ss YYYY - C time string
-		fprintf(output, "%c%c%c, %c%c %c%c%c %c%c%c%c %c%c:%c%c:%c%c GMT",
-			st[0], st[1], st[2], // week day
-			st[8], st[9], // day
-			st[4], st[5], st[6], // month
-			st[20], st[21], st[22], st[23], // year
-			st[11], st[12], // hour
-			st[14], st[15], // minute
-			st[17], st[18]); // second
-	}
-	
-	///////////////////////////////////////////////////////////////////
-	// seta os outros atributos
-	///////////////////////////////////////////////////////////////////
-	if(domain != NULL)
-	{
-		if(strlen(domain) < 1) {
-			Error("Cookie Set Domain cannot be a empty string.");
-		}
-		
-		fprintf(output, "; Domain=%s", domain);
-	}
-	
-	if(path != NULL)
-	{
-		if(strlen(path) < 1) {
-			Error("Cookie Set Path cannot be a empty string.");
-		}
-		
-		fprintf(output, "; Path=%s", path);
-	}
-	
-	if(isSecure == true)
-	{
-		fprintf(output, "; Secure");
-	}
-	
-	if(isHttpOnly == true)
-	{
-		fprintf(output, "; HttpOnly");
-	}
-	
-	fprintf(output, "\r\n"); // para indicar o fim do cookie
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,19 +212,102 @@ CWeb_Cookie_Set(const char *key, const char *value,
 				const bool isSecure, const bool isHttpOnly)
 {
 	///////////////////////////////////////////////////////////////////
-	// Create temp file to keep string
+	// check the args
+	///////////////////////////////////////////////////////////////////
+	if(key == NULL) {
+		Error("Cookie Set Key is NULL.");
+	}
+	if(strlen(key) < 1) {
+		Error("Cookie Set Key is a empty string.");
+	}
+	
+	if(value == NULL) {
+		Error("Cookie Set Value is NULL.\n key is \"%s\"", key);
+	}
+	if(strlen(value) < 1) {
+		Error("Cookie Set Value is a empty string.");
+	}
+	
+	
+	if(expires_sec < 0) {
+		Error("Cookie Set Expires seconds cannot be less than zero.\n"
+			"Uses 0 to not set expires time to cookie.\n"
+			"Expires seconds passed is %d", expires_sec);
+	}
+	
+	///////////////////////////////////////////////////////////////////
+	// cookie set -
 	///////////////////////////////////////////////////////////////////
 	FILE *tmp = tmpfile();
 	if(tmp == NULL) {
 		Error("Cookie Set Cannot Create a temporary file.");
 	}
 	
+	fprintf(tmp, "Set-Cookie: %s=%s",
+		key, CWeb_Percent_Encode(value, strlen(value)));
+		
 	///////////////////////////////////////////////////////////////////
-	// create cookie
+	// cookie set - time
 	///////////////////////////////////////////////////////////////////
-	_Cookie_Set(key, value, expires_sec, domain, 
-				path, isSecure, isHttpOnly, tmp);
+	if(expires_sec > 0)
+	{
+		time_t expires = time(NULL) + expires_sec;
+		struct tm *localTimeExp = localtime(&expires);
+		if(localTimeExp == NULL) {
+			Error("Local Time is NULL.\n returned from localtime() C function.");
+		}
+		
+		char *st = asctime(localTimeExp);
+		if(st == NULL) {
+			Error("String of Local Time is NULL.\nreturned from asctime() C function.");
+		}
+		fprintf(tmp, "; Expires=");
+		// segue o padrão RFC 7231, section 7.1.1.2: Date 	Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Date
+		// Date: <day-name>, <day> <month> <year> <hour>:<minute>:<second> GMT
+		// Date: Wed, 21 Oct 2015 07:28:00 GMT 
+		// DDD MMM dd hh:mm:ss YYYY - C time string
+		fprintf(tmp, "%c%c%c, %c%c %c%c%c %c%c%c%c %c%c:%c%c:%c%c GMT",
+			st[0], st[1], st[2], // week day
+			st[8], st[9], // day
+			st[4], st[5], st[6], // month
+			st[20], st[21], st[22], st[23], // year
+			st[11], st[12], // hour
+			st[14], st[15], // minute
+			st[17], st[18]); // second
+	}
 	
+	///////////////////////////////////////////////////////////////////
+	// seta os outros atributos
+	///////////////////////////////////////////////////////////////////
+	if(domain != NULL)
+	{
+		if(strlen(domain) < 1) {
+			Error("Cookie Set Domain cannot be a empty string.");
+		}
+		
+		fprintf(tmp, "; Domain=%s", domain);
+	}
+	
+	if(path != NULL)
+	{
+		if(strlen(path) < 1) {
+			Error("Cookie Set Path cannot be a empty string.");
+		}
+		
+		fprintf(tmp, "; Path=%s", path);
+	}
+	
+	if(isSecure == true)
+	{
+		fprintf(tmp, "; Secure");
+	}
+	
+	if(isHttpOnly == true)
+	{
+		fprintf(tmp, "; HttpOnly");
+	}
+	
+	fprintf(tmp, "\r\n"); // para indicar o fim do cookie
 	///////////////////////////////////////////////////////////////////
 	// return the string
 	///////////////////////////////////////////////////////////////////
@@ -335,16 +316,8 @@ CWeb_Cookie_Set(const char *key, const char *value,
 	return cookie;
 }
 
-void 
-CWeb_Cookie_Print(const char *key, const char *value,
-					const size_t expires_sec,
-					const char *domain, const char *path,
-					const bool isSecure, const bool isHttpOnly)
-{
-	_Cookie_Set(key, value, expires_sec, domain, 
-				path, isSecure, isHttpOnly, stdout);
 
-}
+
 
 
 

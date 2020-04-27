@@ -61,7 +61,7 @@ extern char *CWeb_Cookie_Get(const char *key);
 
 
 /**
- * Retorna uma string contendo todo o conteúdo do cookie.
+ * Retorna uma string contendo todo o conte
  * os valores key e value, não podem ser NULL e também não podem ser uma
  * string vazia.
  * Insert the string: " GMT" ao final do tempo designado.

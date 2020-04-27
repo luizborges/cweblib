@@ -8,7 +8,7 @@
 
 
 void test1();
-void test2();
+//void test2(ArrayList_noSync_t list);
 //void test3(ArrayList_noSync_t list);
 
 int main(void) {
@@ -16,7 +16,6 @@ int main(void) {
 	StackTracer_Init();
 
 	test1(); 	
- 	test2();
  	
 	return 0;
 }
@@ -34,17 +33,7 @@ void test1() {
 	printf("time: %s\n", ctime(&t));
 }
 
-void test2() {
-	printf("\n*******************************************************\n");
-	printf("Func: %s\n", __func__);
-	printf("*******************************************************\n");
-	
-	CWeb_Cookie_Print("sid", 
-		"my ful name", 180, "www.google.com",
-		"/home/borges", true, true);
-	time_t t = time(NULL);
-	printf("time: %s\n", ctime(&t));
-}
+
 
 
 

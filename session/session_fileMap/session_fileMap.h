@@ -2,8 +2,8 @@
  *
  * @descripion: 
  */
-#ifndef COOKIE_STRMAP_H
-#define COOKIE_STRMAP_H
+#ifndef SESSION_FILEMAP_H
+#define SESSION_FILEMAP_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,6 +18,7 @@ extern "C" {
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <time.h>
 
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
@@ -55,24 +56,19 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
-extern bool CWeb_Cookie_Init();
-
-extern char *CWeb_Cookie_Get(const char *key);
-
-
 /**
- * os valores key e value, não podem ser NULL e também não podem ser uma
- * string vazia.
- * Insert the string: " GMT" ao final do tempo designado.
- * O tempo é recuperado com a função localtime(time(NULL) + expires_sec)
- * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
- * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
- * Ao final da string do cookie é incluído o charactere '\n'
+ * @DirFileSession: diretório em que será criado o arquivo de Sessão.
+ * @lifeSession: tempo que uma sessão dura - tempo em segundos.
+ * @del: tempo (em segundos) para se deletar, dentro do diretório, todos os aruqivos de
+ * sessão. A primeiro coisa que ele faz, é entrar dentro do diretório, e deletar
+ * todos os arquivos de sessão que estão dentro do diretório que foram criados
+ * a mais de 'del' segundos, onde del é esta variável.
+ * 
  */
-extern char *CWeb_Cookie_Set(const char *key, const char *value,
-								const size_t expires_sec,
-								const char *domain, const char *path,
-								const bool isSecure, const bool isHttpOnly);
+extern void
+CWeb_Session_Config(char *DirFileSession,
+				    time_t lifeSession,
+				    time_t del);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
@@ -81,7 +77,7 @@ extern char *CWeb_Cookie_Set(const char *key, const char *value,
 #ifdef __cplusplus
 }
 #endif
-#endif // COOKIE_STRMAP_H
+#endif // SESSION_FILEMAP_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

@@ -26,6 +26,8 @@ extern "C" {
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
 
+#include <headers/percent.h>
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines

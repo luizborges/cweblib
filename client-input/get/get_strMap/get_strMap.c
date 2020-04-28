@@ -31,7 +31,6 @@ typedef Get_StrMap_o* Get_StrMap_t;
 ////////////////////////////////////////////////////////////////////////////////
 static Get_StrMap_t _Get_StrMap_New();
 static Get_StrMap_t _Get_StrMap_Singleton();
-static int _Get_StrMap_Percent_Decode(char* out, const char* in, const int maxDecode);
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions Inline
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +56,7 @@ _Get_StrMap_Fill_Map(const char *getStr,
 		
 		
 		char *keyDecode = &getStrDecode[posInitNextStr];
-		if(_Get_StrMap_Percent_Decode(keyDecode, key, keyLen) != 0) { // decode the key
+		if(CWeb_Percent_Decode(keyDecode, key, keyLen) != true) { // decode the key
 			Error("decoding key in HTTP REQUEST METHOD GET.\nkey enconding: \"%s\"\nkey decode (wrong value): \"%s\"\nKey length: %d\nHTTP GET: \"%s\"\n", key, keyDecode, keyLen, getStr);
 		}
 		posInitNextStr += strlen(keyDecode) +2; // atualiza a nova posição inicial
@@ -72,7 +71,7 @@ _Get_StrMap_Fill_Map(const char *getStr,
 		
 		
 		char *contentDecode = &getStrDecode[posInitNextStr]; // recebe a posição no array de conteúdo própria para guardar o valor
-		if(_Get_StrMap_Percent_Decode(contentDecode, content, contentLen) != 0) { // decode o conteúdo do par do get
+		if(CWeb_Percent_Decode(contentDecode, content, contentLen) != true) { // decode o conteúdo do par do get
 			Error("decoding content in HTTP REQUEST METHOD GET.\ncontent enconding: \"%s\"\nkey decode (wrong value): \"%s\"\ncontent length: %d\nHTTP GET: \"%s\"\n", content, contentDecode, contentLen, getStr);
 		}
 		posInitNextStr += strlen(contentDecode) +2; // atualiza a nova posição inicial
@@ -88,55 +87,7 @@ _Get_StrMap_Fill_Map(const char *getStr,
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions
 ////////////////////////////////////////////////////////////////////////////////
-static int
-_Get_StrMap_Percent_Decode(char* out,
-                           const char* in,
-                           const int maxDecode)
-{
-    static const char tbl[256] = {
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-         0, 1, 2, 3, 4, 5, 6, 7,  8, 9,-1,-1,-1,-1,-1,-1,
-        -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
-        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1
-    };
-    char c, v1, v2, *beg=out;
-    int numDecode = 0;
-    if(in != NULL) {
-//        while(((c=*in++) != '\0') && numDecode < maxDecode) {
-		while(numDecode < maxDecode) {
-			c=*in++;
-            if(c == '%') {
-                if((v1=tbl[(unsigned char)*in++])<0 || 
-                   (v2=tbl[(unsigned char)*in++])<0) {
-                    *beg = '\0';
-                    return -1;
-                }
-                c = (v1<<4)|v2;
-                numDecode += 2;
-            } else if(c == '+') {
-            	*out++ = ' ';
-            	++numDecode;
-            	continue;
-            }
-            *out++ = c;
-            ++numDecode;
-        }
-    }
-    *out = '\0';
-    return 0;
-}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Construct Functions

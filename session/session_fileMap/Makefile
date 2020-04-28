@@ -11,7 +11,7 @@ DLIB            = $(DLIB_STD) $(DLIB_NAME)
 COMPILER_FLAGS  = $(CFLAGS) $(DLIB_DIR_LPATH) $(DLIB_DIR_H_IPATH)
 LINK_FLAGS      = $(COMPILER_FLAGS) $(DLIB_DIR_RPATH) # use -Wl,-rpath= when the library is not in global environment
 LINK_DLIB       = $(LINK_FLAGS) -shared -Wl,-soname,$(LIB)
-C_SRC_LIB       = cookie_strMap.c
+C_SRC_LIB       = session_fileMap.c
 C_SRC_MAIN      = main.c
 C_SRC           = $(C_SRC_LIB)
 C_OBJ_ORI       = $(C_SRC:.c=.o)

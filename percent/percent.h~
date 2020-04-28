@@ -1,13 +1,9 @@
 /**
  *
- * @descripion: faz um parser dos valores passados ao servidor por meio do HTTP REQUEST METHOD GET
- * a string, é quebrada em valor e conteúdo, e inserida em um map, para facilitar a busca dos
- * valores pelo usuários.
- * @warning: OS VALORES SÃO APENAS PARA LEITURA, NUNCA MODIFIQUE OS VALORES PASSADOS.
- * PARA TANTO, COPIE O VALOR PARA OUTRA STRING.
+ * @descripion: 
  */
-#ifndef CLIENTINPUT_POST_STRMAP_H
-#define CLIENTINPUT_POST_STRMAP_H
+#ifndef PERCENT_H
+#define PERCENT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,10 +19,7 @@ extern "C" {
 #include <stdbool.h>
 #include <ctype.h>
 
-#include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
-
-#include <headers/percent.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -59,10 +52,19 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
-extern bool CWeb_ClientInput_Post_Init();
+extern bool
+CWeb_Percent_Decode(char* out,
+                    const char* in,
+                    const int maxDecode);
 
-extern char* ClientInput_Post_StrMap_Get(const char *get_key);
-
+/**
+ * substituiu o character ' ' pelo character '+'.
+ * @return retorna a string codificada em caso de acerto.
+ * em caso de erro, retorna NULL.
+ */
+extern char*
+CWeb_Percent_Encode(const char* in,
+                    const int maxEncode);
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +72,7 @@ extern char* ClientInput_Post_StrMap_Get(const char *get_key);
 #ifdef __cplusplus
 }
 #endif
-#endif // CLIENTINPUT_POST_STRMAP_H
+#endif // PERCENT_H
 
 ////////////////////////////////////////////////////////////////////////////////
 //

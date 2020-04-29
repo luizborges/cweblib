@@ -48,6 +48,7 @@ extern "C" {
 #define CWeb_Route_Init(PATH, FUNC) \
 	CWeb_ClientInput_Init();\
 	CWeb_Cookie_Init();\
+	CWeb_Session_Load();\
 	char *cweb_route_path = getenv("PATH_INFO"); \
 	if(cweb_route_path == NULL) {\
 		FUNC;\

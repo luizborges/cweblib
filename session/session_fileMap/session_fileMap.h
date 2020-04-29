@@ -19,11 +19,13 @@ extern "C" {
 #include <stdbool.h>
 #include <ctype.h>
 #include <time.h>
+#include <errno.h>
 
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
 
-#include <headers/percent.h>
+#include <headers/cookie_strMap.h>
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -66,10 +68,34 @@ extern "C" {
  * 
  */
 extern void
-CWeb_Session_Config(char *DirFileSession,
-				    time_t lifeSession,
-				    time_t del);
+CWeb_Session_Init(const char *DirFileSession,
+				  const time_t lifeSession,
+				  const time_t del);
 
+extern bool
+CWeb_Session_Load();
+
+extern void*
+CWeb_Session_Get(const char *key,
+				size_t *size);
+
+extern void
+CWeb_Session_Set(const char *key,
+				 const void *value,
+				 const size_t size);
+
+extern void*
+CWeb_Session_Del(const char *key,
+				size_t *size);
+
+/**
+ * Retorna o valor do cookie sid.
+ */
+extern char*
+CWeb_Session_Save();
+
+extern void
+CWeb_Session_End();
 ////////////////////////////////////////////////////////////////////////////////
 // Functions - private - to debug
 ////////////////////////////////////////////////////////////////////////////////

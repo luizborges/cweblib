@@ -11,16 +11,17 @@
 typedef struct
 {
 	char *dir;
-	time_t expire;
-	bool isConfig; // to check if is lost configuration
 	char *fname;
+	time_t life; // life session
+	bool isConfig; // to check if is lost configuration
+	int  maxLenMapKey; // maior tamanho da key do map - strlen(key) + 1
 	
-	map_t *map;
+	map_t map;
 } Session_o;
 
 typedef Session_o* Session_t;
 
-
+// conteúdo da sessão
 typedef struct
 {
 	void *value;
@@ -68,42 +69,73 @@ _Session_Is_Expired(Session_t session,
 					FILE *f)
 {
 	time_t ts;
-	fscanf(f, "%li", &ts);
+	if(fread(&ts, sizeof(time_t), 1, f) != 1) {
+		Error("reading session time of creation.\nSession File is \"%s\"\n"
+			"File pointer is %p", session->fname, f);
+	}
 	
 	time_t current = time(NULL);
 	
 	time_t diff = current - ts;
-	if(diff > session->expire) {
+	if(diff > session->life) {
 		MError("This section is expired.\nTime Session: %li\nStr Time Session: \"%s\"\n"
-		"Current Time: %li\nStr Current Time: \"%s\"\nExpire Time Session (seg) is %li\n",
-		ts, FileUtil_Get_Line(f), current, ctime(&time), diff);
+		"Current Time: %li\nStr Current Time: \"%s\"\nMax life Time Session (seg) is %li\n",
+		"Time difference between current time and session time is %li seg.",
+		ts, ctime(&ts), current, ctime(&current), session->life, diff);
 		return true;
 	}
 	
-	FileUtil_Get_Line(f); // pula para a próxima linha
+	char *strTimeSession;
+	if(fread(strTimeSession, 26, 1, f) != 1) {
+		Error("reading session string time of creation.\nSession File is \"%s\"\n"
+			"Session Time is %li\nFile pointer is %p", ts, session->fname, f);
+	}
+	
 	return false;
 }
 
 static void
-_Session_Load((Session_t session,
+_Session_Load(Session_t session,
 				FILE *f)
 {
-	while((char *key = FileUtil_Get_Line(f)) != NULL)
+	if(fread(&session->maxLenMapKey, sizeof(session->maxLenMapKey), 1, f) != 1) {
+		Error("reading session the value of greatest length map key.\n"
+		"Session File is \"%s\"\nFile pointer is %p", session->fname, f);
+	}
+	
+	char *key = MM_Malloc(session->maxLenMapKey*sizeof(char));
+	if(key == NULL) {
+		Error("In allocation memory for reading key of session.\n"
+		"The value of greatest length map key of session is %d.\nSession File is \"%s\"\n"
+		"File pointer is %p", session->maxLenMapKey, session->fname, f);
+	}
+	
+	char end[2];
+	sprintf(end, "%c", EOF);
+	while(FileUtil_Get_Str(key, session->maxLenMapKey, f) != -1)
 	{
-		size_t size = strlen(key);
-		key[size-1] = '\0'; // retira o character '\n' do fim da string
-		
-		fscanf(f, "%zu", &size); // consegue o tamanho do arquivo
-		fgetc(f); // go to next line
-		void *cont = MM_Malloc(size);
-		if(session->dir == NULL) {
-			Error("In allocation memory for load content in session.\nSize is %ld\n", size);
+		Content_t cont = MM_Malloc(sizeof(Content_o));
+		if(cont == NULL) {
+			Error("In allocation memory for session content.\nKey is \"%s\"\n"
+				"Session File is \"%s\"\nFile pointer is %p", key, session->fname, f);
 		}
 		
-		fread(cont, size, 1, f);
+		if(fread(&cont->size, sizeof(size_t), 1, f) != 1) {
+			Error("reading session data content size on session file.\nkey is \"%s\"\n"
+				"Session File is \"%s\"\nFile pointer is %p", key, session->fname, f);
+		}
+		
+		if(fread(cont->value, cont->size, 1, f) != 1) {
+			Error("reading session data content on session file.\nkey is \"%s\"\n"
+				"Session File is \"%s\"\nFile pointer is %p", key, session->fname, f);
+		}
 		
 		session->map->Set(session->map->self, key, cont); // insere no map
-		fgetc(f); // go to next line
+	}
+	
+	if(!feof(f)) { // check the end of file
+		Error("Not end of Session File. - Something goes wrong."
+			"Session File is \"%s\"\nFile pointer is %p", session->fname, f);
 	}
 }
 
@@ -123,10 +155,11 @@ _Session_New()
 		Error("creating map");
 	}
 	
-	session->sConfig = false;
-	session->expire = -1;
+	session->isConfig = false;
+	session->life = -1;
 	session->fname = NULL;
 	session->dir = NULL;
+	session->maxLenMapKey = -1; // indica map vazio
 	
 	return session;
 }
@@ -158,9 +191,9 @@ _Session_Singleton()
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
 void
-CWeb_Session_Init(char *DirFileSession,
-				  time_t lifeSession,
-				  time_t del)
+CWeb_Session_Init(const char *DirFileSession,
+				  const time_t lifeSession,
+				  const time_t del)
 {
 	Session_t session = _Session_Singleton();
 	
@@ -174,7 +207,9 @@ CWeb_Session_Init(char *DirFileSession,
 		}
 		strcpy(session->dir, DirFileSession);
 		
-		if(session->dir[size-1] != '/') { // insere o character '/' ao final da str
+		// TODO - trocar para quando for o windows ou linux
+		// insere o character '/' ao final da str
+		if(session->dir[size-1] != '/' && strlen(session->dir) > 1) {
 			session->dir = (char*)MM_Realloc(session->dir, (size+2)*sizeof(char));
 			if(session->dir == NULL) {
 				Error("In reallocation memory for directory.\nSize is %ld\n"
@@ -186,7 +221,7 @@ CWeb_Session_Init(char *DirFileSession,
 		}
 	}
 	
-	session->expire = lifeSession;
+	session->life = lifeSession;
 	
 	//_Session_Clean(del); // TODO - implementation
 
@@ -212,13 +247,14 @@ CWeb_Session_Load()
 	}
 	
 	_Session_Load(session, fs);
-	fclose(f);
+	fclose(fs);
 	return true;
 }
 
 
 void*
-CWeb_Session_Get(const char *key)
+CWeb_Session_Get(const char *key,
+				size_t *size)
 {
 	if(key == NULL) {
 		Error("Key Session cannot be NULL.");
@@ -226,8 +262,12 @@ CWeb_Session_Get(const char *key)
 	
 	Session_t session = _Session_Singleton();
 	
-	if(session->map->HasKey(session->map->self) == true) {
-		return session->map->Get(session->map->self, key);
+	if(session->map->HasKey(session->map->self, key) == true) {
+		Content_t cont = session->map->Get(session->map->self, key);
+		if(size != NULL) { // pode ser que o não se tenha interesse em recuperar o size
+			*size = cont->size;
+		}
+		return cont->value;
 	} else {
 		int len = -1;
 		char **_key = session->map->Key(session->map->self, &len);
@@ -244,8 +284,36 @@ CWeb_Session_Get(const char *key)
 
 void
 CWeb_Session_Set(const char *key,
-				 const void *content,
+				 const void *value,
 				 const size_t size)
+{
+	if(key == NULL) {
+		Error("Key Session cannot be NULL.");
+	}
+	if(strlen(key) < 1) {
+		Error("Key Session cannot be a empty string.");
+	}
+	if(size < 1) {
+		Error("Size of Session Content Value cannot be 0.");
+	}
+		
+	Content_t cont = MM_Malloc(sizeof(Content_o));
+	if(cont == NULL) {
+		Error("In allocation memory for session content.\nKey is \"%s\"\n"
+			"size of content value is %lu", key, size);
+	}
+	
+	Session_t session = _Session_Singleton();
+	session->map->Set(session->map->self, key, cont);
+	
+	if(strlen(key) >= session->maxLenMapKey) { // update max len key
+		session->maxLenMapKey = strlen(key) +1;
+	}
+}
+
+void*
+CWeb_Session_Del(const char *key,
+				size_t *size)
 {
 	if(key == NULL) {
 		Error("Key Session cannot be NULL.");
@@ -253,15 +321,46 @@ CWeb_Session_Set(const char *key,
 	
 	Session_t session = _Session_Singleton();
 	
-	session->map->Set(session->map->self, key, content);
+	if(session->map->HasKey(session->map->self, key) == true) {
+		Content_t cont = session->map->Del(session->map->self, key);
+		if(size != NULL) { // pode ser que o não se tenha interesse em recuperar o size
+			*size = cont->size;
+		}
+		
+		if((strlen(key)+1) == session->maxLenMapKey) // discover the new maxLenMapKey
+		{
+			session->maxLenMapKey = -1; // reset value to treat empty map
+			int len = -1;
+			char **_key = session->map->Key(session->map->self, &len);
+			for(int i=0; i < len; ++i) { // discover the greastest value
+				if(strlen(_key[i]) >= session->maxLenMapKey) {
+					session->maxLenMapKey = strlen(_key[i]) +1;
+				}
+			}
+		}
+		
+		return cont->value;
+	} else {
+		int len = -1;
+		char **_key = session->map->Key(session->map->self, &len);
+		MError("List of all keys in SESSION that be parsed:");
+		for(int i=0; i < len; ++i) {
+			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
+		}
+		
+		Error("fetch for a no key of SESSION.\nfectch key = \"%s\"", key);
+	}
+	
+	return NULL;
 }
 
-void
+char*
 CWeb_Session_Save()
 {
 	Session_t session = _Session_Singleton();
 	
 	remove(session->fname); // remove old file
+	session->fname = NULL;
 	
 	////////////////////////////////////////////////////////////////////////////////
 	// create file session name
@@ -271,12 +370,13 @@ CWeb_Session_Save()
 	time_t current = time(NULL);
 	char *sid = MM_Malloc((sizeof(int)+sizeof(time_t)+1)*sizeof(char));
 	if(sid == NULL) {
-		Error("In allocation memory for name of file session.\nSize is %ld\n", size);
+		Error("In allocation memory for name of file session.\nSize is %ld\n",
+			(sizeof(int)+sizeof(time_t)+1)*sizeof(char));
 	}
-	sprintf(sid, "%s%s", current, al);
+	sprintf(sid, "%li%d", current, al);
 	
 	int size = strlen(session->dir) + strlen(sid) + strlen(".session") +1;
-	fname = (char*)MM_Malloc(size*sizeof(char));
+	char *fname = (char*)MM_Malloc(size*sizeof(char));
 	if(fname == NULL) {
 		Error("In allocation memory for name of file session.\nSize is %ld\n", size);
 	}
@@ -287,27 +387,69 @@ CWeb_Session_Save()
 	////////////////////////////////////////////////////////////////////////////////
 	FILE *f = fopen(fname, "w");
 	if(f == NULL) {
-		Error("Creating session file.\nfile name is \"%s\"", fname);
+		Error("Creating session file.\nfile name is \"%s\"\nVariable errno is %d\n"
+		"Default msg error is \"%s\"", fname, errno, strerror(errno));
 	}
 	
-	fprintf(f, "%s\n%s\n", current, ctime(current)); // set the time of the session init
+	if(fwrite(&current, sizeof(time_t), 1, f) != 1) {
+		Error("writting session time of creation.\nTime is %li\nStr Time is \"%s\"",
+			current, ctime(&current));
+	}
+	if(fwrite(ctime(&current), 26, 1, f ) != 1) {
+		Error("writting session name string time of creation\nTime is %lu\n"
+			"Str Time is \"%s\"", current, ctime(&current));
+	}
+	if(fwrite(&session->maxLenMapKey, sizeof(int), 1, f) != 1) {
+		Error("writting session the value of greatest length map key.\n"
+			"max len is %lu", session->maxLenMapKey);
+	}
 	
 	int len = -1;
 	char **key = session->map->Key(session->map->self, &len);
 	for(int i=0; i < len; ++i) { // write the map file
-		cont = session->map->Get(session->map->self, key[i]);
-		fprintf(f, "%s\n%s\n", key[i], cont->size);
-		if(fwrite(cont->value, cont->size, 1, f) == 0) {
-			Error("writting session data on session file.\nkey[%d] is %d\n"
-			"size of value is %d", i, key[i], cont->size);
+		Content_t cont = session->map->Get(session->map->self, key[i]);
+		if(fwrite(key[i], strlen(key[i])+1, 1, f) != 1) {
+			Error("writting session name variable on session file.\nkey[%d] is \"%s\"\n"
+			"total length is %lu", i, key[i], strlen(key[i])+1);
+		}
+		if(fwrite(&cont->size, sizeof(size_t), 1, f) != 1) {
+			Error("writting session data content size on session file.\nkey[%d] is \"%s\"\n"
+			"size of value is %lu", i, key[i], cont->size);
+		}
+		if(fwrite(cont->value, cont->size, 1, f) != 1) {
+			Error("writting session data content on session file.\nkey[%d] is \"%s\"\n"
+			"size of value is %lu", i, key[i], cont->size);
 		}
 	}
+	
+	fclose(f);
+	session->isConfig = false;
 	
 	return sid;
 }
 
-
-
+void
+CWeb_Session_End()
+{
+	Session_t session = _Session_Singleton();
+	
+	remove(session->fname); // remove old file
+	session->fname = NULL;
+	
+	////////////////////////////////////////////////////////////////////////////////
+	// remove all map keys of sessions
+	////////////////////////////////////////////////////////////////////////////////
+	int len = -1;
+	char **key = session->map->Key(session->map->self, &len);
+	for(int i=0; i < len; ++i) { // write the map file
+		session->map->Del(session->map->self, key[i]);
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////
+	// reset the values
+	////////////////////////////////////////////////////////////////////////////////
+	session->maxLenMapKey = -1;
+}
 
 
 

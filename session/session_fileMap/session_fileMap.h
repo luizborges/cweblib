@@ -23,6 +23,7 @@ extern "C" {
 
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
+#include <headers/stackTracer.h>
 
 #include <headers/cookie_strMap.h>
 

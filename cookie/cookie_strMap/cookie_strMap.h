@@ -57,7 +57,14 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 extern bool CWeb_Cookie_Init();
 
-extern char *CWeb_Cookie_Get(const char *key);
+/**
+ * Retorna o valor do cookie.
+ * @arg hasKey: se o cookie existe, pode não ter valor associado, apenas precisa existir
+ * o valor é true. false caso o cookie não exista.
+ * @return o valor do cookie ou retorna NULL se não existe o cookie.
+ */
+extern char *CWeb_Cookie_Get(const char *key,
+							bool *hasKey);
 
 
 /**

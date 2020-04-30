@@ -281,7 +281,8 @@ CWeb_Cookie_Init()
 
 
 char*
-CWeb_Cookie_Get(const char *key)
+CWeb_Cookie_Get(const char *key,
+				bool *hasKey)
 {
 	if(key == NULL) { // check arg
 		Error("the key to fetch must be not NULL.");
@@ -290,6 +291,9 @@ CWeb_Cookie_Get(const char *key)
 	Cookie_StrMap_t cookie = _Cookie_StrMap_Singleton();
 	
 	if(cookie->map->HasKey(cookie->map->self, key) == true) {
+		if(hasKey != NULL) {
+			*hasKey = true;
+		}
 		return cookie->map->Get(cookie->map->self, key);
 	} else {
 		int len = -1;
@@ -299,7 +303,11 @@ CWeb_Cookie_Get(const char *key)
 			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
 		}
 		
-		Error("fetch for a no key of HTTP COOKIE.\nfectch key = \"%s\"", key);
+		MError("fetch for a no key of HTTP COOKIE.\nfectch key = \"%s\"", key);
+		
+		if(hasKey != NULL) { // set hasKey
+			*hasKey = false;
+		}
 	}
 	
 	return NULL; // nunca é alcançado

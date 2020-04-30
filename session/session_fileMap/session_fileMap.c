@@ -25,7 +25,7 @@ typedef Session_o* Session_t;
 typedef struct
 {
 	void *value;
-	size_t size;
+	size_t size; // size = sizeof() * numElem
 } Content_o;
 
 typedef Content_o* Content_t;
@@ -49,17 +49,17 @@ typedef Content_o* Content_t;
 static FILE*
 _Session_Get_File(Session_t session) 
 {
-	char *sid = CWeb_Cookie_Get("sid");
+	char *sid = CWeb_Cookie_Get("sid", NULL);
 	if(sid == NULL) {
 		return NULL;
 	}
 	
-	int size = strlen(session->dir) + strlen(sid) +1;
+	int size = strlen(session->dir) + strlen(sid) + 9; // 9 = strlen(".session") + '\0'
 	session->fname = (char*)MM_Malloc(size*sizeof(char));
 	if(session == NULL) {
 		Error("Allocated Space for Sesion File Name.\n Size is %d", size);
 	}
-	sprintf(session->fname, "%s%s", session->dir, sid); // recebe o nome do arquivo
+	sprintf(session->fname, "%s%s.session", session->dir, sid); // recebe o nome do arquivo
 	
 	return fopen(session->fname, "r");
 }
@@ -69,27 +69,37 @@ _Session_Is_Expired(Session_t session,
 					FILE *f)
 {
 	time_t ts;
+	
 	if(fread(&ts, sizeof(time_t), 1, f) != 1) {
 		Error("reading session time of creation.\nSession File is \"%s\"\n"
-			"File pointer is %p", session->fname, f);
+			"File pointer is %p\nerro is %d\nstr erro is \"%s\"",
+			session->fname, f, errno, strerror(errno));
+	}
+	
+	char strTimeSession[26];
+	
+	if(fread(strTimeSession, sizeof(char), 26, f) != 26) {
+		Error("reading session string time of creation.\nSession File is \"%s\"\n"
+			"Session Time is %li\nFile pointer is %p\nerro is %d\nstr erro is \"%s\"",
+			ts, session->fname, f, errno, strerror(errno));
 	}
 	
 	time_t current = time(NULL);
 	
 	time_t diff = current - ts;
+	
+/*	MError("current is %li\nts is %li\ndiff is %li\nsession->life is %li\n"
+	"ctime(&current) is \"%s\"\nctime(&ts) is \"%s\"\nstrTimeSession is \"%s\"",
+		current, ts, diff, session->life, ctime(&current), ctime(&ts), strTimeSession); */
 	if(diff > session->life) {
-		MError("This section is expired.\nTime Session: %li\nStr Time Session: \"%s\"\n"
+/*		MError("This section is expired.\nTime Session: %li\nStr Time Session: \"%s\"\n"
 		"Current Time: %li\nStr Current Time: \"%s\"\nMax life Time Session (seg) is %li\n",
 		"Time difference between current time and session time is %li seg.",
-		ts, ctime(&ts), current, ctime(&current), session->life, diff);
+		ts, ctime(&ts), current, strTimeSession, session->life, diff);*/
 		return true;
 	}
 	
-	char *strTimeSession;
-	if(fread(strTimeSession, 26, 1, f) != 1) {
-		Error("reading session string time of creation.\nSession File is \"%s\"\n"
-			"Session Time is %li\nFile pointer is %p", ts, session->fname, f);
-	}
+	
 	
 	return false;
 }
@@ -100,7 +110,8 @@ _Session_Load(Session_t session,
 {
 	if(fread(&session->maxLenMapKey, sizeof(session->maxLenMapKey), 1, f) != 1) {
 		Error("reading session the value of greatest length map key.\n"
-		"Session File is \"%s\"\nFile pointer is %p", session->fname, f);
+		"Session File is \"%s\"\nFile pointer is %p\nerro is %d\nstr erro is \"%s\"",
+		session->fname, f, errno, strerror(errno));
 	}
 	
 	char *key = MM_Malloc(session->maxLenMapKey*sizeof(char));
@@ -117,17 +128,20 @@ _Session_Load(Session_t session,
 		Content_t cont = MM_Malloc(sizeof(Content_o));
 		if(cont == NULL) {
 			Error("In allocation memory for session content.\nKey is \"%s\"\n"
-				"Session File is \"%s\"\nFile pointer is %p", key, session->fname, f);
+				"Session File is \"%s\"\nFile pointer is %p\nerro is %d\nstr erro is \"%s\"",
+				key, session->fname, f, errno, strerror(errno));
 		}
 		
 		if(fread(&cont->size, sizeof(size_t), 1, f) != 1) {
 			Error("reading session data content size on session file.\nkey is \"%s\"\n"
-				"Session File is \"%s\"\nFile pointer is %p", key, session->fname, f);
+				"Session File is \"%s\"\nFile pointer is %p\nerro is %d\nstr erro is \"%s\"",
+				key, session->fname, f, errno, strerror(errno));
 		}
 		
-		if(fread(cont->value, cont->size, 1, f) != 1) {
+		if(fread(cont->value, 1, cont->size, f) != 1) {
 			Error("reading session data content on session file.\nkey is \"%s\"\n"
-				"Session File is \"%s\"\nFile pointer is %p", key, session->fname, f);
+				"Session File is \"%s\"\nFile pointer is %p\nerro is %d\nstr erro is \"%s\"",
+				key, session->fname, f, errno, strerror(errno));
 		}
 		
 		session->map->Set(session->map->self, key, cont); // insere no map
@@ -135,7 +149,8 @@ _Session_Load(Session_t session,
 	
 	if(!feof(f)) { // check the end of file
 		Error("Not end of Session File. - Something goes wrong."
-			"Session File is \"%s\"\nFile pointer is %p", session->fname, f);
+			"Session File is \"%s\"\nFile pointer is %p\nerro is %d\nstr erro is \"%s\"",
+			session->fname, f, errno, strerror(errno));
 	}
 }
 
@@ -239,10 +254,12 @@ CWeb_Session_Load()
 	
 	FILE* fs = _Session_Get_File(session);
 	if(fs == NULL) {
+		MError("erro is %d\nstr erro is \"%s\"", errno, strerror(errno));
 		return false;
 	}
 	
 	if(_Session_Is_Expired(session, fs) == true) {
+		MError("here444444444444444444");
 		return false;
 	}
 	
@@ -271,12 +288,11 @@ CWeb_Session_Get(const char *key,
 	} else {
 		int len = -1;
 		char **_key = session->map->Key(session->map->self, &len);
-		MError("List of all keys in SESSION that be parsed:");
+		MError("fetch for a no key of SESSION.\nfectch key = \"%s\"\n"
+		"List of all keys in SESSION that be parsed:\nNumber of keys is %d\n", key, len);
 		for(int i=0; i < len; ++i) {
 			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
 		}
-		
-		Error("fetch for a no key of SESSION.\nfectch key = \"%s\"", key);
 	}
 	
 	return NULL;
@@ -294,14 +310,18 @@ CWeb_Session_Set(const char *key,
 		Error("Key Session cannot be a empty string.");
 	}
 	if(size < 1) {
-		Error("Size of Session Content Value cannot be 0.");
+		Error("Size of Session Content Value cannot be 0.\n"
+			"Size is sizeof(type) * numElements.");
 	}
-		
+	
 	Content_t cont = MM_Malloc(sizeof(Content_o));
 	if(cont == NULL) {
 		Error("In allocation memory for session content.\nKey is \"%s\"\n"
 			"size of content value is %lu", key, size);
 	}
+	
+	cont->value = (void*)value;
+	cont->size  = (size_t)size;
 	
 	Session_t session = _Session_Singleton();
 	session->map->Set(session->map->self, key, cont);
@@ -388,37 +408,44 @@ CWeb_Session_Save()
 	FILE *f = fopen(fname, "w");
 	if(f == NULL) {
 		Error("Creating session file.\nfile name is \"%s\"\nVariable errno is %d\n"
-		"Default msg error is \"%s\"", fname, errno, strerror(errno));
+		"Default msg error is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+		fname, errno, strerror(errno), errno, strerror(errno));
 	}
 	
 	if(fwrite(&current, sizeof(time_t), 1, f) != 1) {
-		Error("writting session time of creation.\nTime is %li\nStr Time is \"%s\"",
-			current, ctime(&current));
+		Error("writting session time of creation.\nTime is %li\nStr Time is \"%s\""
+		"\nerro is %d\nstr erro is \"%s\"",
+			current, ctime(&current), errno, strerror(errno));
 	}
-	if(fwrite(ctime(&current), 26, 1, f ) != 1) {
+	if(fwrite(ctime(&current), sizeof(char), 26, f ) != 26) {
 		Error("writting session name string time of creation\nTime is %lu\n"
-			"Str Time is \"%s\"", current, ctime(&current));
+			"Str Time is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+			current, ctime(&current), errno, strerror(errno));
 	}
 	if(fwrite(&session->maxLenMapKey, sizeof(int), 1, f) != 1) {
 		Error("writting session the value of greatest length map key.\n"
-			"max len is %lu", session->maxLenMapKey);
+			"max len is %lu\nerro is %d\nstr erro is \"%s\"",
+			session->maxLenMapKey, errno, strerror(errno));
 	}
 	
 	int len = -1;
 	char **key = session->map->Key(session->map->self, &len);
 	for(int i=0; i < len; ++i) { // write the map file
 		Content_t cont = session->map->Get(session->map->self, key[i]);
-		if(fwrite(key[i], strlen(key[i])+1, 1, f) != 1) {
+		if(fwrite(key[i], sizeof(char), strlen(key[i])+1, f) != strlen(key[i])+1) {
 			Error("writting session name variable on session file.\nkey[%d] is \"%s\"\n"
-			"total length is %lu", i, key[i], strlen(key[i])+1);
+			"total length is %lu\nerro is %d\nstr erro is \"%s\"",
+			i, key[i], strlen(key[i])+1, errno, strerror(errno));
 		}
 		if(fwrite(&cont->size, sizeof(size_t), 1, f) != 1) {
 			Error("writting session data content size on session file.\nkey[%d] is \"%s\"\n"
-			"size of value is %lu", i, key[i], cont->size);
+			"size of value is %lu\nerro is %d\nstr erro is \"%s\"",
+			i, key[i], cont->size, errno, strerror(errno));
 		}
-		if(fwrite(cont->value, cont->size, 1, f) != 1) {
+		if(fwrite(cont->value, 1, cont->size, f) != cont->size) {
 			Error("writting session data content on session file.\nkey[%d] is \"%s\"\n"
-			"size of value is %lu", i, key[i], cont->size);
+			"size of value is %lu\nerro is %d\nstr erro is \"%s\"",
+			i, key[i], cont->size, errno, strerror(errno));
 		}
 	}
 	

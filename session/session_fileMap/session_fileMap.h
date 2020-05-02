@@ -68,7 +68,7 @@ extern "C" {
  * a mais de 'del' segundos, onde del é esta variável.
  * 
  */
-extern void
+extern void*
 CWeb_Session_Init(const char *DirFileSession,
 				  const time_t lifeSession,
 				  const time_t del);

@@ -74,7 +74,7 @@ CWeb_Session_Init(const char *DirFileSession,
 				  const time_t del);
 
 extern bool
-CWeb_Session_Load();
+CWeb_Session_Load(const char *sid);
 
 extern void*
 CWeb_Session_Get(const char *key,

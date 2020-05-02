@@ -30,7 +30,7 @@ typedef Cookie_StrMap_o* Cookie_StrMap_t;
 static Cookie_StrMap_t _Cookie_StrMap_New();
 static Cookie_StrMap_t _Cookie_StrMap_Singleton();
 static void _Cookie_StrMap_Fill_Map(const char *str, const int   strLen, char *strDecode, map_t map);
-static void _Cookie_Set(const char *key, const char *value, const size_t expires_sec, const char *domain, const char *path, const bool isSecure, const bool isHttpOnly, FILE *output);
+static void _Cookie_Set(const char *key, const char *value, const long expires_sec, const char *domain, const char *path, const bool isSecure, const bool isHttpOnly, FILE *output);
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions Inline
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ _Cookie_StrMap_Fill_Map(const char *str,
 
 static void
 _Cookie_Set(const char *key, const char *value,
-			const size_t expires_sec,
+			const long expires_sec,
 			const char *domain, const char *path,
 			const bool isSecure, const bool isHttpOnly,
 			FILE *output)
@@ -113,14 +113,16 @@ _Cookie_Set(const char *key, const char *value,
 	if(value == NULL) {
 		Error("Cookie Set Value is NULL.\n key is \"%s\"", key);
 	}
-	if(strlen(value) < 1) {
-		Error("Cookie Set Value is a empty string.");
-	}
+//	if(strlen(value) < 1) {
+//		Error("Cookie Set Value is a empty string.");
+//	}
 	
 	
-	if(expires_sec < 0) {
-		Error("Cookie Set Expires seconds cannot be less than zero.\n"
+	if(expires_sec < -1) {
+		Error("Cookie Set Expires seconds cannot be less than -1.\n"
 			"Uses 0 to not set expires time to cookie.\n"
+			"Uses -1 to expire a cookie, setting the value = \n"
+			"\"; Expires=Thu, 01 Jan 1970 00:00:00 GMT\".\n"
 			"Expires seconds passed is %d", expires_sec);
 	}
 	
@@ -158,6 +160,10 @@ _Cookie_Set(const char *key, const char *value,
 			st[11], st[12], // hour
 			st[14], st[15], // minute
 			st[17], st[18]); // second
+	}
+	else if(expires_sec == -1)
+	{
+		fprintf(output, "; Expires=Thu, 01 Jan 1970 00:00:00 GMT");
 	}
 	
 	///////////////////////////////////////////////////////////////////
@@ -295,19 +301,19 @@ CWeb_Cookie_Get(const char *key,
 			*hasKey = true;
 		}
 		return cookie->map->Get(cookie->map->self, key);
-	} else {
-		int len = -1;
-		char **_key = cookie->map->Key(cookie->map->self, &len);
-		MError("List of all keys in HTTP COOKIE that be parsed:");
-		for(int i=0; i < len; ++i) {
-			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
-		}
+	}
+	
+	// treat when no key is found
+	int len = -1;
+	char **_key = cookie->map->Key(cookie->map->self, &len);
+	MError("Fetch for a no key of HTTP COOKIE.\nfectch key = \"%s\"\n"
+		"List of all keys in HTTP COOKIE that be parsed:", key);
+	for(int i=0; i < len; ++i) {
+		fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
+	}
 		
-		MError("fetch for a no key of HTTP COOKIE.\nfectch key = \"%s\"", key);
-		
-		if(hasKey != NULL) { // set hasKey
-			*hasKey = false;
-		}
+	if(hasKey != NULL) { // set hasKey
+		*hasKey = false;
 	}
 	
 	return NULL; // nunca é alcançado
@@ -317,7 +323,7 @@ CWeb_Cookie_Get(const char *key,
 
 char*
 CWeb_Cookie_Set(const char *key, const char *value,
-				const size_t expires_sec,
+				const long expires_sec,
 				const char *domain, const char *path,
 				const bool isSecure, const bool isHttpOnly)
 {
@@ -345,7 +351,7 @@ CWeb_Cookie_Set(const char *key, const char *value,
 
 void 
 CWeb_Cookie_Print(const char *key, const char *value,
-					const size_t expires_sec,
+					const long expires_sec,
 					const char *domain, const char *path,
 					const bool isSecure, const bool isHttpOnly)
 {

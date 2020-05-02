@@ -47,14 +47,19 @@ typedef Content_o* Content_t;
 // Private Functions
 ////////////////////////////////////////////////////////////////////////////////
 static FILE*
-_Session_Get_File(Session_t session) 
+_Session_Get_File(Session_t session, const char *sid) 
 {
-	/*char *sid = CWeb_Cookie_Get("sid", NULL);
+	//char *sid = CWeb_Cookie_Get("sid", NULL);
 	if(sid == NULL) {
 		return NULL;
-	}*/
+	}
 	
-	char sid[20] = "test"; // for test
+//	char TESTSID[20] = "test"; // for test
+//	sid = TESTSID; // for test
+	if(sid == NULL) {
+		MError("No \"sid\" for loading File Session.\nsid is NULL.");
+		return NULL;
+	}
 	
 	int size = strlen(session->dir) + strlen(sid) + 9; // 9 = strlen(".session") + '\0'
 	session->fname = (char*)MM_Malloc(size*sizeof(char));
@@ -63,7 +68,7 @@ _Session_Get_File(Session_t session)
 	}
 	sprintf(session->fname, "%s%s.session", session->dir, sid); // recebe o nome do arquivo
 	
-	FILE *fs = fopen(session->fname, "r");
+	FILE *fs = fopen(session->fname, "rb");
 	if(fs == NULL) {
 		MError("File Session is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 			session->fname, errno, strerror(errno));
@@ -125,7 +130,7 @@ _Session_Load(Session_t session,
 		"session maximum length of key is %d", session->maxLenMapKey);
 	}
 	
-   	printf("%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
+   	fprintf(stderr, "%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
    	char *key = MM_Malloc(session->maxLenMapKey*sizeof(char));
    	if(key == NULL) {
 		Error("In allocation memory for reading key of session.\n"
@@ -145,11 +150,11 @@ _Session_Load(Session_t session,
 		"number of map key is %d", numKey);
 	}
 	
-	printf("%s::numKey is %d\n", __func__, numKey);
+	fprintf(stderr, "%s::numKey is %d\n", __func__, numKey);
 	
    	for(int i=0; i < numKey; ++i)
 	{
-   		printf("%s::[%d] of %d\n", __func__, i, numKey);
+   		fprintf(stderr, "%s::[%d] of %d\n", __func__, i+1, numKey);
    		int len = -1;
    		if(fread(&len, sizeof(int), 1, f) != 1) {
 			Error("reading the length of map key.\nid of key is %d\n"
@@ -164,7 +169,7 @@ _Session_Load(Session_t session,
 			len, session->fname, f, numKey);
 		}
 		
-   		printf("%s::len is %d\n", __func__, len);
+   		fprintf(stderr, "%s::len is %d\n", __func__, len);
 		
    		if(fread(key, sizeof(char), len, f) != len) {
 			Error("reading map key.\nid of key is %d\nLength of key is %d"
@@ -172,7 +177,7 @@ _Session_Load(Session_t session,
 				i, len, session->fname, f, errno, strerror(errno));
 		}
 		
-   		printf("%s::key is \"%s\"\n", __func__, key);
+   		fprintf(stderr, "%s::key is \"%s\"\n", __func__, key);
 		
 		Content_t cont = MM_Malloc(sizeof(Content_o));
 		if(cont == NULL) {
@@ -304,15 +309,14 @@ CWeb_Session_Init(const char *DirFileSession,
 }
 
 bool
-CWeb_Session_Load()
+CWeb_Session_Load(const char *sid)
 {
-	_TL
    	Session_t session = _Session_Singleton();
    	if(session->isConfig == false) {
 	   	Error("Session is not configured.");
    	}
    	
-   	FILE* fs = _Session_Get_File(session);
+   	FILE* fs = _Session_Get_File(session, sid);
    	if(fs == NULL) {
    		return false;
    	}
@@ -323,6 +327,16 @@ CWeb_Session_Load()
    	
    	_Session_Load(session, fs);
    	fclose(fs);
+   	
+   	
+//  	fprintf(stderr, "\n%s::****************************\n", __func__);
+//   	fprintf(stderr, "%s::CHECK MAP SESSION\n", __func__);
+// 	int x = -1;
+//	char **r = session->map->Key(session->map->self, &x);
+/*	for(int i=0; i < x; ++i) {
+		fprintf(stderr, "%s::[%d] of %d\n", __func__, i, x);
+		fprintf(stderr, "%s::key is \"%s\"\n", __func__, r[i]);
+	} */
     return true;
 }
 
@@ -343,14 +357,14 @@ CWeb_Session_Get(const char *key,
 			*size = cont->size;
 		}
 		return cont->value;
-	} else {
-		int len = -1;
-		char **_key = session->map->Key(session->map->self, &len);
-		MError("fetch for a no key of SESSION.\nfectch key = \"%s\"\n"
+	}
+	
+	int len = -1;
+	char **_key = session->map->Key(session->map->self, &len);
+	MError("fetch for a no key of SESSION.\nfectch key = \"%s\"\n"
 		"List of all keys in SESSION that be parsed:\nNumber of keys is %d\n", key, len);
-		for(int i=0; i < len; ++i) {
-			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
-		}
+	for(int i=0; i < len; ++i) {
+		fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
 	}
 	
 	return NULL;
@@ -385,20 +399,20 @@ CWeb_Session_Set(const char *key,
 	session->map->Set(session->map->self, key, cont);
 	
 	int len = strlen(key) +1;
-	printf("\n%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
+	/*printf("\n%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
 	printf("%s::key is \"%s\"\n", __func__, key);
-	printf("%s::strlen(key) is %li\n", __func__, strlen(key));
+	printf("%s::strlen(key) is %li\n", __func__, strlen(key));*/
 	
 	if(len >= session->maxLenMapKey) { // update max len key
 		session->maxLenMapKey = strlen(key) +1;
 	}
-	printf("%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
+	//printf("%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
 	
 	int x = -1;
 	char **r = session->map->Key(session->map->self, &x);
 	for(int i=0; i < x; ++i) {
-		printf("%s::[%d] of %d\n", __func__, i, x);
-		printf("%s::key is \"%s\"\n", __func__, r[i]);
+		fprintf(stderr, "%s::[%d] of %d\n", __func__, i+1, x);
+		fprintf(stderr, "%s::key is \"%s\"\n", __func__, r[i]);
 	}
 }
 
@@ -431,16 +445,14 @@ CWeb_Session_Del(const char *key,
 		}
 		
 		return cont->value;
-	} else {
+	}
 		int len = -1;
 		char **_key = session->map->Key(session->map->self, &len);
-		MError("List of all keys in SESSION that be parsed:");
+		MError("Fetch for a no key of SESSION.\nfectch key = \"%s\"\n"
+			"List of all keys in SESSION that be parsed:", key);
 		for(int i=0; i < len; ++i) {
 			fprintf(stderr, "[%d] :: \"%s\"\n", i+1, _key[i]);
 		}
-		
-		Error("fetch for a no key of SESSION.\nfectch key = \"%s\"", key);
-	}
 	
 	return NULL;
 }
@@ -472,16 +484,18 @@ CWeb_Session_Save()
 		Error("In allocation memory for name of file session.\nSize is %ld\n", size);
 	}
 	sprintf(fname, "%s%s.session", session->dir, sid);
-	
-	//char sidT[20] = "test.session"; // for test
+	fprintf(stderr, "%s::fname is %p | len is %d | sum: %p\n", __func__, fname, size*sizeof(char), fname + size*sizeof(char));
+	// FOR TEST
+	//char sidT[300] = "test"; // for test
+	//sprintf(fname, "%s%s.session", session->dir, sidT);
 	//fname = sidT;
-	
-	printf("%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
+	fprintf(stderr, "%s::fname is \"%s\"\n", __func__, fname);
+	fprintf(stderr, "%s::session->maxLenMapKey is %d\n", __func__, session->maxLenMapKey);
 	
 	////////////////////////////////////////////////////////////////////////////////
 	// Insert data in file session
 	////////////////////////////////////////////////////////////////////////////////
-	FILE *f = fopen(fname, "w");
+	FILE *f = fopen(fname, "wb");
 	if(f == NULL) {
 		Error("Creating session file.\nfile name is \"%s\"\nVariable errno is %d\n"
 		"Default msg error is \"%s\"\nerro is %d\nstr erro is \"%s\"",
@@ -524,11 +538,11 @@ CWeb_Session_Save()
 		Content_t cont = session->map->Get(session->map->self, key[i]);
 		
 		int len = strlen(key[i]) +1;
-		printf("\n%s::[%d] of %d\n", __func__, i, numKey);
-		printf("%s::len is %d\n", __func__, len);
-		printf("%s::key is \"%s\"\n", __func__, key[i]);
-		printf("%s::size is %ld\n", __func__, cont->size);
-		printf("%s::value is \"%s\"\n", __func__, (char*)cont->value);
+		fprintf(stderr, "\n%s::[%d] of %d\n", __func__, i+1, numKey);
+		fprintf(stderr, "%s::len is %d\n", __func__, len);
+		fprintf(stderr, "%s::key is \"%s\"\n", __func__, key[i]);
+		fprintf(stderr, "%s::size is %ld\n", __func__, cont->size);
+		fprintf(stderr, "%s::value is \"%s\"\n", __func__, (char*)cont->value);
 		if(fwrite(&len, sizeof(int), 1, f) != 1) {
 			Error("writting the length of session map key.\n"
 			"key is \"%s\"\nLength is %d\nerro is %d\nstr erro is \"%s\"",
@@ -553,7 +567,7 @@ CWeb_Session_Save()
 	}
 	
 	fclose(f);
-	
+		
 	return sid;
 }
 

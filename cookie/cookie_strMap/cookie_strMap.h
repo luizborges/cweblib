@@ -76,9 +76,11 @@ extern char *CWeb_Cookie_Get(const char *key,
  * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
  * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
  * Ao final da string do cookie é incluído o charactere '\n'
+ * OBS: se o valor do expires_sec for -1, o tempo será setado para
+ * "expires=Thu, 01 Jan 1970 00:00:00 GMT" este valor é usado para expirar o cookie
  */
 extern char *CWeb_Cookie_Set(const char *key, const char *value,
-								const size_t expires_sec,
+								const long expires_sec,
 								const char *domain, const char *path,
 								const bool isSecure, const bool isHttpOnly);
 
@@ -93,9 +95,11 @@ extern char *CWeb_Cookie_Set(const char *key, const char *value,
  * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
  * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
  * Ao final da string do cookie é incluído o charactere '\n'
+ * OBS: se o valor do expires_sec for -1, o tempo será setado para
+ * "expires=Thu, 01 Jan 1970 00:00:00 GMT" este valor é usado para expirar o cookie
  */
 extern void CWeb_Cookie_Print(const char *key, const char *value,
-								const size_t expires_sec,
+								const long expires_sec,
 								const char *domain, const char *path,
 								const bool isSecure, const bool isHttpOnly);
 ////////////////////////////////////////////////////////////////////////////////

@@ -67,25 +67,6 @@ _Parser_Tag(Out_t cout, char *tag);
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions Inline
 ////////////////////////////////////////////////////////////////////////////////
-static inline char*
-_Get_New_Name_Tag_ADD()
-{
-	static int num = 0;
-	
-	char prefix[14] = "___tag_add___";
-	
-	char *name = MM_Malloc((strlen(prefix) + sizeof(int) +1)*sizeof(char));
-	if(name == NULL) {
-		Error("Allocating space for new name of tag add\n"
-		"erro is %d\nstr erro is \"%s\"", errno, strerror(errno));
-	}
-	
-	sprintf(name, "%s%s", prefix, num);
-	++num; // update num for the next name
-	
-	return name;
-}
-
 
 static inline bool
 _Has_Only_Alpha_Num(const char *str)
@@ -428,8 +409,8 @@ _Parser_Tag(Out_t cout,
 	/////////////////////////////////////////////////////////////////
 	// check the header of tag "<?cweb #in "" or <?cweb #add "
 	/////////////////////////////////////////////////////////////////
-	if(strncmp(tag, "<?cweb #in \"", 12) != 0 &&
-		strncmp(tag, "<?cweb #add \"", 13) != 0)
+	if(strncmp(tag, "<?cweb #in \"",    17) != 0 &&
+		strncmp(tag, "<?cweb #add \"",    18) != 0)
 	{
 		char *endLine = strchr(tag, '\n'); // descobre o fim da linha onde ocorreu o erro
 		if(endLine != NULL) {
@@ -437,15 +418,9 @@ _Parser_Tag(Out_t cout,
 		}
 		
 		Error("tag <?cweb is incorrect.\nTag found (until the end of line): \"%s\"\n"
-			"Expected one of these sequences: \"<?cweb #include \"\" (with \' \') or"
-			" \"<?cweb\n#add \"\" (with \' \') \nfor more details see documentation.\n"
-			"Client Output Name: \"%s\"", tag, cout->name);
+			"Expected one of these sequences: \"<?cweb #in \"\" (with \' \') or \"<?cweb\n#add \"\" (with \' \') \nfor more details see documentation.\nClient Output Name: \"%s\"", tag, cout->name);
 	}
 	
-	bool isTagADD = false;
-	if(strncmp(tag, "<?cweb #add \"", 12) == 0) {
-		isTagADD = true;
-	}
 	/////////////////////////////////////////////////////////////////
 	// get the name in the include
 	/////////////////////////////////////////////////////////////////
@@ -457,17 +432,9 @@ _Parser_Tag(Out_t cout,
 		if(endLine != NULL) {
 			endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
 		}
-		Error("tag <?cweb is incorrect.\nNAME has always be terminated with character \'\"\'.\nNAME given is = \"%s\".\ntag struct is \"<?cweb #include \"NAME\" ?>\" or \"<?cweb #add \"NAME\" ?>\".\nfor more details see documentation.\nClient Output Name: \"%s\"", name, cout->name);
+		Error("tag <?cweb is incorrect.\nNAME has always be terminated with character \'\"\'.\nNAME given is = \"%s\".\ntag struct is \"<?cweb #in \"NAME\" ?>\" or \"<?cweb #add \"NAME\" ?>\".\nfor more details see documentation.\nClient Output Name: \"%s\"", name, cout->name);
 	}
 	nameEnd[0] = '\0'; // seta o fim de name, onde era o character '"'
-	
-	// trata se for a tag <cweb #add \"
-	/**
-	 * Ele le o nome do arquivo e adiciona o mesmo como sendo uma tag
-	*/
-	if(isTagADD == true) {
-	}
-	
 	_Parser_Inside_Tag_Check_Name(cout, name);
 	
 	/////////////////////////////////////////////////////////////////
@@ -481,7 +448,10 @@ _Parser_Tag(Out_t cout,
 	char *tagEnd = nameEnd; // descobre o começo depois do fim do nome
 	tagEnd = &tagEnd[1]; // seta o primeiro character depois de '"' - após o fim do nome
 	
-	if( strncmp(tagEnd, " ?>",    3) != 0)
+	if( strncmp(tagEnd, " ?>",    3) != 0 &&
+		strncmp(tagEnd, "\n?>",   3) != 0 &&
+		strncmp(tagEnd, "\r\n?>", 4) != 0 &&
+		strncmp(tagEnd, "\t?>",   3) != 0)
 	{
 		char *endLine = strchr(tagEnd, '\n'); // descobre o fim da linha onde ocorreu o erro
 		if(endLine != NULL) {
@@ -489,8 +459,7 @@ _Parser_Tag(Out_t cout,
 		}
 		
 		Error("tag <?cweb is incorrect.\nEnd of Tag found (until the end of line): \"%s\"\n"
-			"Expected one of these sequences: \" ?>\" (with \' \')\nfor more details see"
-			" documentation.\nClient Output Name: \"%s\"", tagEnd, cout->name);
+			"Expected one of these sequences: \" ?>\" (with \' \') or \"\n?>\" (with \\n) or \"\r\n?>\" (with \\r\\n) or \"\t?>\" (\\t).\nfor more details see documentation.\nClient Output Name: \"%s\"", tagEnd, cout->name);
 	}
 	
 	/////////////////////////////////////////////////////////////////

@@ -3,8 +3,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
-//#include "session_fileMap.h"
-#include "../../cweb.h"
+#include "session_fileMap.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 // Private Structs
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,13 @@ _Session_Get_File(Session_t session, const char *sid)
 	}
 	sprintf(session->fname, "%s%s.session", session->dir, sid); // recebe o nome do arquivo
 	
-	return fopen(session->fname, "rb");
+	FILE *fs = fopen(session->fname, "rb");
+	if(fs == NULL) {
+		MError("File Session is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+			session->fname, errno, strerror(errno));
+	}
+	
+	return fs;
 }
 
 static bool
@@ -312,9 +318,7 @@ CWeb_Session_Load(const char *sid)
    	
    	FILE* fs = _Session_Get_File(session, sid);
    	if(fs == NULL) {
-   		MError("File Session is \"%s\"\nerro is %d\nstr erro is \"%s\"",
-			session->fname, errno, strerror(errno));
-		return false;
+   		return false;
    	}
    	
    	if(_Session_Is_Expired(session, fs) == true) {
@@ -480,7 +484,7 @@ CWeb_Session_Save()
 		Error("In allocation memory for name of file session.\nSize is %ld\n", size);
 	}
 	sprintf(fname, "%s%s.session", session->dir, sid);
-	fprintf(stderr, "%s::fname is %p | len is %li | sum: %p\n", __func__, fname, size*sizeof(char), fname + size*sizeof(char));
+	fprintf(stderr, "%s::fname is %p | len is %d | sum: %p\n", __func__, fname, size*sizeof(char), fname + size*sizeof(char));
 	// FOR TEST
 	//char sidT[300] = "test"; // for test
 	//sprintf(fname, "%s%s.session", session->dir, sidT);
@@ -565,36 +569,6 @@ CWeb_Session_Save()
 	fclose(f);
 		
 	return sid;
-}
-
-char**
-CWeb_Session_Key(int *numKey)
-{
-	Session_t session = _Session_Singleton();
-	
-	char **key = session->map->Key(session->map->self, numKey);
-	
-	return key;
-}
-
-
-int
-CWeb_Session_Clean()
-{
-	Session_t session = _Session_Singleton();
-	
-	int len = -1;
-	char **key = session->map->Key(session->map->self, &len);
-	for(int i=0; i < len; ++i) { // write the map file
-		session->map->Del(session->map->self, key[i]);
-	}
-	
-	////////////////////////////////////////////////////////////////////////////////
-	// reset the values
-	////////////////////////////////////////////////////////////////////////////////
-	session->maxLenMapKey = -1;
-	
-	return len;
 }
 
 void

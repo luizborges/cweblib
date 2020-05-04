@@ -80,7 +80,7 @@ _Get_New_Name_Tag_ADD()
 		"erro is %d\nstr erro is \"%s\"", errno, strerror(errno));
 	}
 	
-	sprintf(name, "%s%s", prefix, num);
+	sprintf(name, "%s%d", prefix, num);
 	++num; // update num for the next name
 	
 	return name;
@@ -461,19 +461,30 @@ _Parser_Tag(Out_t cout,
 	}
 	nameEnd[0] = '\0'; // seta o fim de name, onde era o character '"'
 	
-	// trata se for a tag <cweb #add \"
-	/**
-	 * Ele le o nome do arquivo e adiciona o mesmo como sendo uma tag
-	*/
-	if(isTagADD == true) {
+	
+	if(isTagADD == true) // run tag <?cweb #add
+	{
+		// trata se for a tag <cweb #add \"
+		/**
+		 * para fins de deixar o código mais simples e harmonico.
+		 * Ele le o nome do arquivo e adiciona o mesmo como sendo uma tag #in
+		 * Em seguida manda executar a tag.
+		*/
+		char *tagAddName = _Get_New_Name_Tag_ADD();
+		CWeb_Out_Set(tagAddName, name, "file_name", "leaf");
+		_Parser_Inside_Tag_Check_Name(cout, tagAddName);
+		_Parser_Inside_Tag_Run_COutChild(cout, tagAddName); // run cout child leaf - new cout
+		MM_Free(tagAddName); // free memory
+	} else { // run tag <?cweb #in
+		_Parser_Inside_Tag_Check_Name(cout, name);
+		_Parser_Inside_Tag_Run_COutChild(cout, name); // run cout child leaf - new cout run
 	}
 	
-	_Parser_Inside_Tag_Check_Name(cout, name);
 	
 	/////////////////////////////////////////////////////////////////
 	// get the new cout that name is called
 	/////////////////////////////////////////////////////////////////
-	_Parser_Inside_Tag_Run_COutChild(cout, name);
+	
 	
 	/////////////////////////////////////////////////////////////////
 	// treat the end of tag after NAME
@@ -710,6 +721,11 @@ int CWeb_Out_Print()
 	Out_t cout = NULL;
 	while((cout = _Get_Root_COutput_To_Print(false)) != NULL) {
 		_Parser(cout);
+		// free memory
+/*		if(cout->type == file_name) {
+			MM_Free(cout->var.file_name);
+		}
+		MM_Free(cout);*/
 	}
 	
 	_StrMap_Print();
@@ -724,6 +740,11 @@ int CWeb_Out_Print_Error()
 	Out_t cout = NULL;
 	while((cout = _Get_Root_COutput_To_Print(true)) != NULL) {
 		_Parser(cout);
+		// free memory
+/*		if(cout->type == file_name) {
+			MM_Free(cout->var.file_name);
+		}
+		MM_Free(cout);*/
 	}
 	
 	_StrMap_Print();

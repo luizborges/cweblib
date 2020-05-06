@@ -22,6 +22,13 @@ extern "C" {
 #include <time.h>
 #include <errno.h>
 
+#if defined(unix) || defined(__unix) || defined(__unix__) || (defined (__APPLE__) && defined (__MACH__)) // Unix (Linux, *BSD, Mac OS X)
+#include <sys/types.h>
+#include <dirent.h>
+#endif
+
+
+
 #include <headers/abstractFactoryCommon.h>
 #include <headers/fileUtil.h>
 #include <headers/stackTracer.h>
@@ -62,25 +69,128 @@ extern int CWeb_Out_Print_Error();
 // Includes - Client Input
 ////////////////////////////////////////////////////////////////////////////////
 //#include "client-input/clientInput_manager/clientInput_manager.h"
-#include <headers/clientInput_manager.h>
+//#include <headers/clientInput_manager.h>
+//#include <headers/get_strMap.h> // trata o METHOD GET
+//#include <headers/post_strMap.h> // trata o METHOD POST
+
+// methods generics - the user only use these methods
+bool CWeb_In_Init();
+char *CWeb_In(const char *key);
+
+// methods get - to implement interface above
+extern bool CWeb_ClientInput_Get_Init();
+extern char* ClientInput_Get_StrMap_Get(const char *get_key);
+
+// methods post - to implement interface above
+extern bool CWeb_ClientInput_Post_Init();
+extern char* ClientInput_Post_StrMap_Get(const char *get_key);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - Route
 ////////////////////////////////////////////////////////////////////////////////
 //#include "route/route_easy/route_easy.h"
 //#include <headers/route_easy.h>
-#include <headers/route_integrated.h>
+//#include <headers/route_integrated.h>
+// route integrade 
+/**
+ * os parâmetros são os mesmos.
+ * @PARAM PATH = string que contém o caminho requisitado, ou seja, deve ser igual ao
+ * retornado pela variável PATH_INFO que é preenchida pelo HTTP.
+ * @PARAM FUNC = função que deve ser chamada, caso o endereço seja requisitado.
+ * para utilizar mais de um código, apenas usar o parênteses ex: page_index(); page_index_2()
+ */
+#define CWeb_Route_Init(PATH, FUNC) \
+	CWeb_In_Init();\
+	CWeb_Cookie_Init();\
+	char *cweb_route_path = getenv("PATH_INFO"); \
+	if(cweb_route_path == NULL) {\
+		FUNC;\
+	} else if(strcmp(cweb_route_path, PATH) == 0) {\
+		FUNC;\
+	}
+
+#define CWeb_Route(PATH, FUNC) \
+	else if(strcmp(cweb_route_path, PATH) == 0) {\
+		FUNC;\
+	}
+
+#define CWeb_Route_Error(FUNC) \
+	else {\
+		FUNC;\
+	}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - Cookies
 ////////////////////////////////////////////////////////////////////////////////
 //#include "cookie/cookie_strMap/cookie_strMap.h"
-#include <headers/cookie_strMap.h>
+//#include <headers/cookie_strMap.h>
+extern bool CWeb_Cookie_Init();
+
+/**
+ * Retorna o valor do cookie.
+ * @arg hasKey: se o cookie existe, pode não ter valor associado, apenas precisa existir
+ * o valor é true. false caso o cookie não exista.
+ * @return o valor do cookie ou retorna NULL se não existe o cookie.
+ */
+extern char *CWeb_Cookie_Get(const char *key,
+							bool *hasKey);
+
+
+/**
+ * Retorna uma string contendo todo o conteúdo do cookie.
+ * os valores key e value, não podem ser NULL e também não podem ser uma
+ * string vazia.
+ * Insert the string: " GMT" ao final do tempo designado.
+ * O tempo é recuperado com a função localtime(time(NULL) + expires_sec)
+ * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
+ * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
+ * Ao final da string do cookie é incluído o charactere '\n'
+ * OBS: se o valor do expires_sec for -1, o tempo será setado para
+ * "expires=Thu, 01 Jan 1970 00:00:00 GMT" este valor é usado para expirar o cookie
+ */
+extern char *CWeb_Cookie_Set(const char *key, const char *value,
+								const long expires_sec,
+								const char *domain, const char *path,
+								const bool isSecure, const bool isHttpOnly);
+
+/**
+ * A saída é gravada pela função fprintf(stdout, ... );
+ * A gravação é feita por partes, ou seja, não é criada toda a string e então
+ * inserida no stdout.
+ * os valores key e value, não podem ser NULL e também não podem ser uma
+ * string vazia.
+ * Insert the string: " GMT" ao final do tempo designado.
+ * O tempo é recuperado com a função localtime(time(NULL) + expires_sec)
+ * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
+ * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
+ * Ao final da string do cookie é incluído o charactere '\n'
+ * OBS: se o valor do expires_sec for -1, o tempo será setado para
+ * "expires=Thu, 01 Jan 1970 00:00:00 GMT" este valor é usado para expirar o cookie
+ */
+extern void CWeb_Cookie_Print(const char *key, const char *value,
+								const long expires_sec,
+								const char *domain, const char *path,
+								const bool isSecure, const bool isHttpOnly);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - Url Percent Encode/Decode
 ////////////////////////////////////////////////////////////////////////////////
 //#include "percent/percent.h"
-#include <headers/percent.h>
+//#include <headers/percent.h>
+
+extern bool
+CWeb_Percent_Decode(char* out,
+                    const char* in,
+                    const int maxDecode);
+
+/**
+ * substituiu o character ' ' pelo character '+'.
+ * @return retorna a string codificada em caso de acerto.
+ * em caso de erro, retorna NULL.
+ */
+extern char*
+CWeb_Percent_Encode(const char* in,
+                    const int maxEncode);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - Session

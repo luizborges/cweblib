@@ -42,6 +42,147 @@ typedef Content_o* Content_t;
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions Inline
 ////////////////////////////////////////////////////////////////////////////////
+static inline bool
+_Session_Is_Session_File(const char *file)
+{
+	if(file == NULL) return false;
+	
+	int len = strlen(file);
+	
+	if(len < 9) return false;
+	
+	// check the extension of file
+	if(file[len -8] != '.') return false;
+	if(file[len -7] != 's') return false;
+	if(file[len -6] != 'e') return false;
+	if(file[len -5] != 's') return false;
+	if(file[len -4] != 's') return false;
+	if(file[len -3] != 'i') return false;
+	if(file[len -2] != 'o') return false;
+	if(file[len -1] != 'n') return false;
+	
+	return true;
+}
+
+
+static inline bool
+_Session_Is_To_Delete(const time_t del,
+					  const char *fname,
+					  FILE *f)
+{
+	time_t ts;
+	if(fread(&ts, sizeof(time_t), 1, f) != 1) {
+		Error("reading session time of delete routine for old file session.\n"
+		"Session File is \"%s\"\nFile pointer is %p\nerro is %d\nstr erro is \"%s\"",
+			fname, f, errno, strerror(errno));
+	}
+	
+	char strTimeSession[26];
+	if(fread(strTimeSession, sizeof(char), 26, f) != 26) {
+		Error("reading session string time of delete routine for old file session.\n"
+		"Session File is \"%s\"\nSession Time is %li\nFile pointer is %p\nerro is %d\n"
+		"str erro is \"%s\"", ts, fname, f, errno, strerror(errno));
+	}
+	
+	time_t current = time(NULL);
+	char strc[26];
+	strcpy(strc, ctime(&current)); // it is necessary, sometimes ctime gives errors.
+
+	time_t diff = current - ts;
+	//printf("current is %li\nts is %li\ndiff is %li\nDel is %li\n", current, ts, diff, del);
+	//printf("current str is %sts str is %s", strc, strTimeSession);
+	if(diff > del) {
+		return true;
+	}
+	
+	return false;
+}
+
+static inline void
+_Session_Clean_Old_Files(const time_t del,
+						 const char *dirName)
+{
+	if(del < 1) { // não faz nada
+		return;
+	}
+	
+#if defined(_WIN32) || defined(_WIN64)
+	fprintf(stderr,
+	"Session Clean Old File Sessions is not implemented yet to Windows System.\n");
+	
+#elif defined(unix) || defined(__unix) || defined(__unix__) || (defined (__APPLE__) && defined (__MACH__)) // Unix (Linux, *BSD, Mac OS X)
+
+	DIR *dir = opendir (dirName); // open de directory
+	if(dir == NULL) {
+		Error("Couldn't open the directory where Session files is.\n"
+		"Directory name passed is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+		dirName, errno, strerror(errno));
+	}
+	
+	// create array to keep file session name
+	int dirLen = strlen(dirName);
+	int maxName = 29;
+	char *fname = MM_Malloc(dirLen + maxName +1);
+	if(fname == NULL) {
+		Error("In allocation memory for reading file session name.\n"
+			"The default length of file session name is %d.\n"
+			"Directory of Session File is \"%s\"\nLength of directory name is %d\n"
+			"erro is %d\nstr erro is \"%s\"",
+			dirLen+maxName+1, dirName, dirLen, errno, strerror(errno));
+	}
+	
+	// read each file in directory to remove the file how match the condition
+	struct dirent *ep;
+	while ((ep = readdir(dir)) != NULL)
+	{
+        bool isS = _Session_Is_Session_File(ep->d_name);
+        if(isS == false) continue;
+        
+        int flen = strlen(ep->d_name);
+        // verifia se a string pode suportar o tamanho do diretorio + do nome do arquivo
+        if(flen > maxName) { 
+        	maxName = flen;  
+        	fname = MM_Realloc(fname, dirLen + maxName +1);
+        	if(fname == NULL) {
+        		Error("In reallocation memory for reading file session name.\n"
+				"The length of file session name is %d.\nFile session name is \"%s\""
+				"Directory of Session File is \"%s\"\nLength of directory name is %d\n"
+				"The total size requeried is %d\nerro is %d\nstr erro is \"%s\"",
+				flen, ep->d_name, dirName, dirLen, dirLen+maxName+1, errno, strerror(errno));
+        	}
+        }
+        
+        sprintf(fname, "%s%s", dirName, ep->d_name);
+        //printf("\n\ndir is \"%s\"\nep->d_name is \"%s\"\nfname is \"%s\"\n", dirName, ep->d_name, fname);
+        FILE *f = fopen(fname, "rb");
+        if(f == NULL) {
+   			MError("Could not open file session.\nFile Session is \"%s\"\nerro is %d\n"
+   			"str erro is \"%s\"", fname, errno, strerror(errno));
+			continue;
+   		}
+   		
+   		bool isDel = _Session_Is_To_Delete(del, fname, f);
+   		int errn = fclose(f);
+   		if(errn != 0) {
+   			Error("in close file session.\nFile session name is \"%s\"\n"
+				"erro is %d\nstr erro is \"%s\"",
+				fname, errno, strerror(errno));
+   		}
+   		if(isDel == true) {
+   			errn = remove(fname);
+   			if(errn != 0) {
+   				Error("in remove file session .\nFile session name is \"%s\"\n"
+				"erro is %d\nstr erro is \"%s\"",
+				fname, errno, strerror(errno));
+   			}
+   		}
+    }
+    
+    (void) closedir (dir);
+#endif
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Private Functions
@@ -50,10 +191,9 @@ static FILE*
 _Session_Get_File(Session_t session, const char *sid) 
 {
 	//char *sid = CWeb_Cookie_Get("sid", NULL);
-	if(sid == NULL) {
+	/*if(sid == NULL) {
 		return NULL;
-	}
-	
+	}*/
 //	char TESTSID[20] = "test"; // for test
 //	sid = TESTSID; // for test
 	if(sid == NULL) {
@@ -64,7 +204,8 @@ _Session_Get_File(Session_t session, const char *sid)
 	int size = strlen(session->dir) + strlen(sid) + 9; // 9 = strlen(".session") + '\0'
 	session->fname = (char*)MM_Malloc(size*sizeof(char));
 	if(session == NULL) {
-		Error("Allocated Space for Sesion File Name.\n Size is %d", size);
+		Error("Allocated Space for Sesion File Name.\n Size is %d\n"
+		"erro is %d\nstr erro is \"%s\"", size, errno, strerror(errno));
 	}
 	sprintf(session->fname, "%s%s.session", session->dir, sid); // recebe o nome do arquivo
 	
@@ -129,7 +270,8 @@ _Session_Load(Session_t session,
    	if(key == NULL) {
 		Error("In allocation memory for reading key of session.\n"
 		"The value of greatest length map key of session is %d.\nSession File is \"%s\"\n"
-		"File pointer is %p", session->maxLenMapKey, session->fname, f);
+		"File pointer is %p\nerro is %d\nstr erro is \"%s\"",
+		session->maxLenMapKey, session->fname, f, errno, strerror(errno));
 	}
 	
 	int numKey = -1;
@@ -276,7 +418,8 @@ CWeb_Session_Init(const char *DirFileSession,
 		session->dir = (char*)MM_Malloc((size+1)*sizeof(char));
 		if(session->dir == NULL) {
 			Error("In allocation memory for directory.\nSize is %ld\n"
-				"Directory is \"%s\"", size+1, DirFileSession);
+				"Directory is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+				size+1, DirFileSession, errno, strerror(errno));
 		}
 		strcpy(session->dir, DirFileSession);
 		
@@ -286,7 +429,8 @@ CWeb_Session_Init(const char *DirFileSession,
 			session->dir = (char*)MM_Realloc(session->dir, (size+2)*sizeof(char));
 			if(session->dir == NULL) {
 				Error("In reallocation memory for directory.\nSize is %ld\n"
-					"Directory is \"%s\"", size+2, DirFileSession);
+					"Directory is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+					 size+2, DirFileSession, errno, strerror(errno));
 			}
 			
 			session->dir[size] = '/';
@@ -295,10 +439,10 @@ CWeb_Session_Init(const char *DirFileSession,
 	}
 	
 	session->life = lifeSession;
-	
-	//_Session_Clean(del); // TODO - implementation
-
 	session->isConfig = true;
+	
+	_Session_Clean_Old_Files(del, session->dir); // TODO - implementation
+	
 	return session;
 }
 
@@ -322,7 +466,12 @@ CWeb_Session_Load(const char *sid)
    	}
    	
    	_Session_Load(session, fs);
-   	fclose(fs);
+   	int errn = fclose(fs);
+   	if(errn != 0) {
+   		Error("in close file session name.\nFile session name is \"%s\"\n"
+			"erro is %d\nstr erro is \"%s\"", session->fname, errno, strerror(errno));
+   	}
+   	
    	
    	
 //  	fprintf(stderr, "\n%s::****************************\n", __func__);
@@ -458,8 +607,17 @@ CWeb_Session_Save()
 {
 	Session_t session = _Session_Singleton();
 	
-	remove(session->fname); // remove old file
-	session->fname = NULL;
+	if(session->fname != NULL)
+	{
+		int errn = remove(session->fname);
+   		if(errn != 0) {
+   			MError("in remove file session name.\nFile session name is \"%s\"\n"
+			"erro is %d\nstr erro is \"%s\"",
+			session->fname, errno, strerror(errno));
+   		}
+   		
+		session->fname = NULL;
+	}
 	
 	////////////////////////////////////////////////////////////////////////////////
 	// create file session name
@@ -491,6 +649,7 @@ CWeb_Session_Save()
 	////////////////////////////////////////////////////////////////////////////////
 	// Insert data in file session
 	////////////////////////////////////////////////////////////////////////////////
+	session->fname = fname;
 	FILE *f = fopen(fname, "wb");
 	if(f == NULL) {
 		Error("Creating session file.\nfile name is \"%s\"\nVariable errno is %d\n"
@@ -562,7 +721,11 @@ CWeb_Session_Save()
 		}
 	}
 	
-	fclose(f);
+	int errn = fclose(f);
+   	if(errn != 0) {
+   		Error("in close file session name.\nFile session name is \"%s\"\n"
+			"erro is %d\nstr erro is \"%s\"", fname, errno, strerror(errno));
+   	}
 		
 	return sid;
 }
@@ -602,8 +765,17 @@ CWeb_Session_End()
 {
 	Session_t session = _Session_Singleton();
 	
-	remove(session->fname); // remove old file
-	session->fname = NULL;
+	if(session->fname != NULL)
+	{
+		int errn = remove(session->fname);
+   		if(errn != 0) {
+   			MError("in remove file session name.\nFile session name is \"%s\"\n"
+			"erro is %d\nstr erro is \"%s\"",
+			session->fname, errno, strerror(errno));
+   		}
+   		
+		session->fname = NULL;
+	}
 	
 	////////////////////////////////////////////////////////////////////////////////
 	// remove all map keys of sessions

@@ -2,7 +2,8 @@
 #include <assert.h>
 #include <headers/stackTracer.h>
 #include <headers/memoryManager.h>
-#include "session_fileMap.h"
+//#include "session_fileMap.h"
+#include <headers/cweb.h>
 
 
 #define _ printf("Get here...: %d\n", __LINE__);
@@ -31,7 +32,7 @@ Session_t session;
 int main(void) {
 	MM_Init();
 	StackTracer_Init();
-	session = CWeb_Session_Init("", 300, 1800);
+	session = CWeb_Session_Init("/media/borges/data/cloud/Mega/programming/c/cweblib/session/session_fileMap/test", 300, 1800);
 	test1(); 
 	test2();
 	test3();
@@ -96,7 +97,7 @@ void test4() {
 	
 	int *j = CWeb_Session_Get("array", &s);
 	s = s / sizeof(int);
-	printf("%s::size *j is %d \n", __func__, s);
+	printf("%s::size *j is %ld \n", __func__, s);
 	for(int z=0; z < s; z++) {
 		printf("%s::j[%d] = %d \n", __func__, z, j[z]);
 	}
